@@ -37,6 +37,7 @@ import {
 } from '../utils/audioEngine';
 import { AudioRecorder } from '../utils/recorder';
 import { AudioFolderLibrary } from './AudioFolderLibrary';
+import { saveAudioFile, getAudioDuration, formatBytes, formatDurationSeconds } from '../utils/audioLibraryStorage';
 
 interface SoundSettingsViewProps {
   settings: BellSettings;
@@ -309,13 +310,37 @@ export const SoundSettingsView: React.FC<SoundSettingsViewProps> = ({
 
     const fileName = file.name;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
+      const dataUrl = reader.result as string;
       onSaveSettings({
         ...settings,
-        customBellAudioUrl: reader.result as string,
+        customBellAudioUrl: dataUrl,
         customBellFileName: fileName,
         defaultChimeType: 'custom_audio'
       });
+
+      // Also register to Firebase Cloud Firestore audio library
+      try {
+        const durationSec = await getAudioDuration(dataUrl);
+        const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[_.-]+/g, ' ').trim();
+        await saveAudioFile({
+          id: 'audio-custom-bell-' + Date.now(),
+          name: 'Bel Utama: ' + cleanName,
+          fileName: fileName,
+          folderName: 'Bel Utama',
+          fullRelativePath: fileName,
+          size: file.size,
+          sizeFormatted: formatBytes(file.size),
+          type: file.type || 'audio/mpeg',
+          url: dataUrl,
+          duration: durationSec,
+          durationFormatted: formatDurationSeconds(durationSec),
+          uploadedAt: new Date().toISOString(),
+          targetSlot: 'bell'
+        });
+      } catch (err) {
+        console.warn('Could not sync custom bell to Firebase library:', err);
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';

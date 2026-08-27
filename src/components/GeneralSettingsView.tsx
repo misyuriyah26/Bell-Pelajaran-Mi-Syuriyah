@@ -38,6 +38,7 @@ import {
   calculateNuFalakiyahDate 
 } from '../utils/hijriNuService';
 import { FirestoreService, testFirestoreConnection } from '../lib/firebase';
+import { getAllAudioFiles, saveMultipleAudioFiles } from '../utils/audioLibraryStorage';
 import { Cloud, Database, UploadCloud, DownloadCloud } from 'lucide-react';
 
 interface GeneralSettingsViewProps {
@@ -120,7 +121,14 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
       await FirestoreService.saveSchoolProfile(profile);
       await FirestoreService.saveBellSettings(settings);
       await FirestoreService.batchSaveSchedules(schedules);
-      setCloudMsg({ type: 'success', text: 'Semua jadwal, pengaturan, dan profil berhasil diunggah ke Firebase Firestore!' });
+      
+      // Also upload all local audio files to Firebase Cloud Firestore
+      const localAudios = await getAllAudioFiles();
+      if (localAudios && localAudios.length > 0) {
+        await FirestoreService.saveMultipleAudioFiles(localAudios);
+      }
+
+      setCloudMsg({ type: 'success', text: `Semua jadwal, audio upload (${localAudios.length} file), pengaturan, dan profil berhasil diunggah ke Firebase Firestore!` });
       setTimeout(() => setCloudMsg(null), 4000);
     } catch (err: any) {
       console.error('Error uploading to cloud:', err);
@@ -134,10 +142,11 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
     setIsCloudSyncing(true);
     setCloudMsg(null);
     try {
-      const [remoteProfile, remoteSettings, remoteSchedules] = await Promise.all([
+      const [remoteProfile, remoteSettings, remoteSchedules, remoteAudios] = await Promise.all([
         FirestoreService.getSchoolProfile(),
         FirestoreService.getBellSettings(),
-        FirestoreService.getAllSchedules()
+        FirestoreService.getAllSchedules(),
+        FirestoreService.getAudioFiles()
       ]);
 
       let pulledCount = 0;
@@ -154,9 +163,13 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
         onSaveSchedules(remoteSchedules);
         pulledCount++;
       }
+      if (remoteAudios && remoteAudios.length > 0) {
+        await saveMultipleAudioFiles(remoteAudios);
+        pulledCount += remoteAudios.length;
+      }
 
       if (pulledCount > 0) {
-        setCloudMsg({ type: 'success', text: `Berhasil mengunduh data terbaru dari Firebase Firestore (${pulledCount} entitas)!` });
+        setCloudMsg({ type: 'success', text: `Berhasil mengunduh data dan file audio terbaru dari Firebase Firestore (${pulledCount} entitas & file)!` });
       } else {
         setCloudMsg({ type: 'success', text: 'Database Firebase masih kosong atau belum ada data tersimpan.' });
       }

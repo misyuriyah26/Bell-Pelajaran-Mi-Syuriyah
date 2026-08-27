@@ -18,6 +18,7 @@ import { CustomAudioUrls, BellSettings, AudioFileItem } from '../types';
 import { AudioRecorder } from '../utils/recorder';
 import { playAudioUrl } from '../utils/audioEngine';
 import { AudioLibraryPickerModal } from './AudioLibraryPickerModal';
+import { saveAudioFile, formatBytes, formatDurationSeconds, getAudioDuration } from '../utils/audioLibraryStorage';
 
 interface ScheduleAudioUploaderProps {
   customAudio: CustomAudioUrls | undefined;
@@ -93,7 +94,7 @@ export const ScheduleAudioUploader: React.FC<ScheduleAudioUploaderProps> = ({
 
     const fileName = file.name;
     const reader = new FileReader();
-    reader.onloadend = () => {
+    reader.onloadend = async () => {
       const base64 = reader.result as string;
       const fileNameKey = slot === 'bellAudioUrl' ? 'bellFileName' 
                         : slot === 'idAudioUrl' ? 'idFileName'
@@ -106,6 +107,31 @@ export const ScheduleAudioUploader: React.FC<ScheduleAudioUploaderProps> = ({
         [fileNameKey]: fileName
       };
       onChangeCustomAudio(updated);
+
+      // Register uploaded file to shared library & Firebase Cloud Firestore
+      try {
+        const durationSec = await getAudioDuration(base64);
+        const slotType = slot === 'bellAudioUrl' ? 'bell' : slot === 'idAudioUrl' ? 'id' : slot === 'enAudioUrl' ? 'en' : 'ar';
+        const cleanName = fileName.replace(/\.[^/.]+$/, "").replace(/[_.-]+/g, ' ').trim();
+
+        await saveAudioFile({
+          id: 'audio-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
+          name: cleanName,
+          fileName: fileName,
+          folderName: 'Upload Jadwal',
+          fullRelativePath: fileName,
+          size: file.size,
+          sizeFormatted: formatBytes(file.size),
+          type: file.type || 'audio/mpeg',
+          url: base64,
+          duration: durationSec,
+          durationFormatted: formatDurationSeconds(durationSec),
+          uploadedAt: new Date().toISOString(),
+          targetSlot: slotType
+        });
+      } catch (err) {
+        console.warn('Could not register uploaded audio to shared library:', err);
+      }
     };
     reader.readAsDataURL(file);
     e.target.value = '';

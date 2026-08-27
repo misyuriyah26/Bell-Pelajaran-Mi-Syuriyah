@@ -97,5 +97,12 @@ service cloud.firestore {
       allow create: if isValidId(logId);
       allow update, delete: if isValidId(logId);
     }
+
+    // Audio Library & Uploaded Files collection (connected to Firebase)
+    match /audio_library/{fileId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(fileId);
+      allow delete: if isValidId(fileId);
+    }
   }
 }

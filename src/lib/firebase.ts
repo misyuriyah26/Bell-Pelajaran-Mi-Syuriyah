@@ -22,7 +22,7 @@ import {
   limit
 } from 'firebase/firestore';
 import rawFirebaseConfig from '../../firebase-applet-config.json';
-import { BellEvent, BellSettings, SchoolProfile, BellLog, AuthUser } from '../types';
+import { BellEvent, BellSettings, SchoolProfile, BellLog, AuthUser, AudioFileItem } from '../types';
 
 // Support Vercel environment variables with fallback to bundled config
 const activeFirebaseConfig = {
@@ -282,6 +282,60 @@ export const FirestoreService = {
     }
   },
 
+  // Audio Library & Uploaded Files (Collection: audio_library)
+  async getAudioFiles(): Promise<AudioFileItem[]> {
+    const path = 'audio_library';
+    try {
+      const snap = await getDocs(collection(db, 'audio_library'));
+      const list: AudioFileItem[] = [];
+      snap.forEach(docSnap => {
+        list.push(docSnap.data() as AudioFileItem);
+      });
+      list.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      return list;
+    } catch (error) {
+      handleFirestoreError(error, OperationType.LIST, path);
+    }
+  },
+
+  async saveAudioFile(item: AudioFileItem): Promise<void> {
+    const path = `audio_library/${item.id}`;
+    try {
+      await setDoc(doc(db, 'audio_library', item.id), item, { merge: true });
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
+    }
+  },
+
+  async saveMultipleAudioFiles(items: AudioFileItem[]): Promise<void> {
+    for (const item of items) {
+      await this.saveAudioFile(item);
+    }
+  },
+
+  async deleteAudioFile(fileId: string): Promise<void> {
+    const path = `audio_library/${fileId}`;
+    try {
+      await deleteDoc(doc(db, 'audio_library', fileId));
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
+  async clearAllAudioFiles(): Promise<void> {
+    const path = 'audio_library';
+    try {
+      const snap = await getDocs(collection(db, 'audio_library'));
+      const promises: Promise<void>[] = [];
+      snap.forEach(docSnap => {
+        promises.push(deleteDoc(doc(db, 'audio_library', docSnap.id)));
+      });
+      await Promise.all(promises);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.DELETE, path);
+    }
+  },
+
   // 4. Real-time Firestore Subscriptions
   subscribeSchoolProfile(onUpdate: (profile: SchoolProfile) => void, onError?: (err: Error) => void) {
     return onSnapshot(doc(db, 'configs', 'school_profile'), (docSnap) => {
@@ -330,6 +384,20 @@ export const FirestoreService = {
       onUpdate(list);
     }, (err) => {
       console.warn('Logs realtime listener notice:', err);
+      if (onError) onError(err);
+    });
+  },
+
+  subscribeAudioLibrary(onUpdate: (files: AudioFileItem[]) => void, onError?: (err: Error) => void) {
+    return onSnapshot(collection(db, 'audio_library'), (querySnap) => {
+      const list: AudioFileItem[] = [];
+      querySnap.forEach((docSnap) => {
+        list.push(docSnap.data() as AudioFileItem);
+      });
+      list.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
+      onUpdate(list);
+    }, (err) => {
+      console.warn('Audio library realtime listener notice:', err);
       if (onError) onError(err);
     });
   }

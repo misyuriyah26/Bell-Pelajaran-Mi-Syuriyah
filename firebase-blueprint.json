@@ -97,6 +97,28 @@
         "announcementText": { "type": "string", "maxLength": 500 }
       },
       "required": ["id", "timestamp", "timeStr", "eventName", "type", "status"]
+    },
+    "UploadedAudioFile": {
+      "title": "UploadedAudioFile",
+      "description": "Custom uploaded MP3/audio files connected to Firebase Cloud Firestore for synchronized multi-device playback",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "name": { "type": "string", "maxLength": 200 },
+        "fileName": { "type": "string", "maxLength": 200 },
+        "folderName": { "type": "string", "maxLength": 150 },
+        "fullRelativePath": { "type": "string", "maxLength": 300 },
+        "size": { "type": "number" },
+        "sizeFormatted": { "type": "string", "maxLength": 30 },
+        "type": { "type": "string", "maxLength": 50 },
+        "duration": { "type": "number" },
+        "durationFormatted": { "type": "string", "maxLength": 20 },
+        "url": { "type": "string" },
+        "uploadedAt": { "type": "string", "maxLength": 64 },
+        "detectedCategory": { "type": "string", "maxLength": 50 },
+        "targetSlot": { "type": "string", "maxLength": 20 }
+      },
+      "required": ["id", "name", "fileName", "uploadedAt"]
     }
   },
   "firestore": {
@@ -119,6 +141,10 @@
     "/bell_logs/{logId}": {
       "schema": "BellLog",
       "description": "Audited activity and historical ring logs"
+    },
+    "/audio_library/{fileId}": {
+      "schema": "UploadedAudioFile",
+      "description": "Shared cloud storage for uploaded audio MP3 files, chimes, and announcements"
     }
   }
 }

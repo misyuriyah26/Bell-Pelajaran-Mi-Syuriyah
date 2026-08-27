@@ -21,9 +21,12 @@ import {
   AlertCircle,
   FileAudio,
   Sliders,
-  ChevronDown
+  ChevronDown,
+  Cloud,
+  Database
 } from 'lucide-react';
 import { AudioFileItem, BellEvent, BellSettings, BellCategory } from '../types';
+import { FirestoreService } from '../lib/firebase';
 import { 
   getAllAudioFiles, 
   saveMultipleAudioFiles, 
@@ -78,9 +81,20 @@ export const AudioFolderLibrary: React.FC<AudioFolderLibraryProps> = ({
   const folderInputRef = useRef<HTMLInputElement>(null);
   const multiFileInputRef = useRef<HTMLInputElement>(null);
 
-  // Load files on mount
+  // Load files on mount and subscribe to real-time Firebase changes
   useEffect(() => {
     loadLibrary();
+
+    // Subscribe to real-time updates from Firebase Cloud Firestore
+    const unsub = FirestoreService.subscribeAudioLibrary((cloudFiles) => {
+      if (cloudFiles && cloudFiles.length > 0) {
+        setAudioItems(cloudFiles);
+      }
+    });
+
+    return () => {
+      unsub();
+    };
   }, []);
 
   const loadLibrary = async () => {
@@ -421,16 +435,20 @@ export const AudioFolderLibrary: React.FC<AudioFolderLibraryProps> = ({
               <FolderArchive className="w-8 h-8 text-amber-300" />
             </div>
             <div>
-              <div className="flex items-center gap-2">
+              <div className="flex items-center gap-2 flex-wrap">
                 <h2 className="text-lg sm:text-xl font-bold text-white tracking-tight">
-                  Galeri & Folder Audio MP3 Madrasah
+                  Galeri &amp; Folder Audio MP3 Madrasah
                 </h2>
                 <span className="px-2.5 py-0.5 rounded-full text-xs font-bold bg-amber-500/20 text-amber-300 border border-amber-500/30">
                   Folder Batch Upload
                 </span>
+                <span className="px-2 py-0.5 rounded-full text-[11px] font-bold bg-emerald-950 text-emerald-300 border border-emerald-500/50 flex items-center gap-1">
+                  <Cloud className="w-3 h-3 text-emerald-400" />
+                  <span>Tersinkron Firebase Cloud</span>
+                </span>
               </div>
               <p className="text-xs sm:text-sm text-slate-300 mt-1 max-w-2xl">
-                Upload 1 folder berisi seluruh rekaman MP3 bel sekolah sekaligus. File tersimpan aman di peramban dan dapat dipasangkan ke jadwal secara otomatis atau manual.
+                Upload 1 folder berisi rekaman MP3 bel sekolah sekaligus. File otomatis tersambung ke Firebase Cloud Firestore dan dapat diakses dari seluruh perangkat madrasah.
               </p>
             </div>
           </div>

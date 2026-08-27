@@ -1,4 +1,5 @@
 import { AudioFileItem, BellCategory } from '../types';
+import { FirestoreService } from '../lib/firebase';
 
 const DB_NAME = 'MISyuriyahBellAudioDB_v1';
 const STORE_NAME = 'audioLibrary';
@@ -136,19 +137,20 @@ export function getAudioDuration(url: string): Promise<number> {
 }
 
 /**
- * Load all audio files from IndexedDB
+ * Load all audio files from IndexedDB with optional Cloud Firestore fallback
  */
 export async function getAllAudioFiles(): Promise<AudioFileItem[]> {
+  let localResults: AudioFileItem[] = [];
+
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    localResults = await new Promise<AudioFileItem[]>((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readonly');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.getAll();
 
       request.onsuccess = () => {
         const results = (request.result || []) as AudioFileItem[];
-        // Sort by uploadedAt descending
         results.sort((a, b) => new Date(b.uploadedAt).getTime() - new Date(a.uploadedAt).getTime());
         resolve(results);
       };
@@ -158,26 +160,61 @@ export async function getAllAudioFiles(): Promise<AudioFileItem[]> {
       };
     });
   } catch (err) {
-    console.warn('IndexedDB read failed, falling back to localStorage metadata:', err);
+    console.warn('IndexedDB read failed, checking localStorage fallback:', err);
     try {
       const raw = localStorage.getItem(LOCALSTORAGE_BACKUP_KEY);
-      if (raw) return JSON.parse(raw);
+      if (raw) localResults = JSON.parse(raw);
     } catch {
       // ignore
     }
-    return [];
+  }
+
+  // If local DB is empty, try fetching from Firebase Cloud Firestore to hydrate
+  if (localResults.length === 0) {
+    try {
+      const cloudAudioFiles = await FirestoreService.getAudioFiles();
+      if (cloudAudioFiles && cloudAudioFiles.length > 0) {
+        // Cache to local IndexedDB for instantaneous future playback
+        await saveMultipleAudioFilesLocalOnly(cloudAudioFiles);
+        return cloudAudioFiles;
+      }
+    } catch (err) {
+      console.warn('Could not fetch initial audio files from Firestore:', err);
+    }
+  }
+
+  return localResults;
+}
+
+/**
+ * Save to IndexedDB locally only (internal helper)
+ */
+async function saveMultipleAudioFilesLocalOnly(items: AudioFileItem[]): Promise<void> {
+  if (items.length === 0) return;
+  try {
+    const db = await openDB();
+    return new Promise((resolve, reject) => {
+      const transaction = db.transaction([STORE_NAME], 'readwrite');
+      const store = transaction.objectStore(STORE_NAME);
+      items.forEach((item) => store.put(item));
+      transaction.oncomplete = () => resolve();
+      transaction.onerror = () => reject(transaction.error);
+    });
+  } catch (err) {
+    console.warn('Failed to cache audio files locally:', err);
   }
 }
 
 /**
- * Save / Insert multiple audio files to IndexedDB in a single transaction
+ * Save / Insert multiple audio files to IndexedDB AND Cloud Firestore
  */
 export async function saveMultipleAudioFiles(items: AudioFileItem[]): Promise<void> {
   if (items.length === 0) return;
 
+  // 1. Save locally to IndexedDB
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
 
@@ -185,75 +222,78 @@ export async function saveMultipleAudioFiles(items: AudioFileItem[]): Promise<vo
         store.put(item);
       });
 
-      transaction.oncomplete = () => {
-        resolve();
-      };
-
+      transaction.oncomplete = () => resolve();
       transaction.onerror = () => {
-        console.error('Transaction error saving audio files:', transaction.error);
+        console.error('Transaction error saving audio files locally:', transaction.error);
         reject(transaction.error);
       };
     });
   } catch (err) {
     console.error('Failed to save audio files to IndexedDB:', err);
-    throw err;
+  }
+
+  // 2. Automatically sync / upload to Firebase Cloud Firestore
+  try {
+    await FirestoreService.saveMultipleAudioFiles(items);
+  } catch (cloudErr) {
+    console.warn('Notice: Background sync of audio files to Firebase Cloud Firestore:', cloudErr);
   }
 }
 
 /**
- * Save single audio file
+ * Save single audio file to IndexedDB AND Cloud Firestore
  */
 export async function saveAudioFile(item: AudioFileItem): Promise<void> {
   return saveMultipleAudioFiles([item]);
 }
 
 /**
- * Delete audio file from IndexedDB
+ * Delete audio file from IndexedDB AND Cloud Firestore
  */
 export async function deleteAudioFile(id: string): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.delete(id);
-
-      request.onsuccess = () => {
-        resolve();
-      };
-
-      request.onerror = () => {
-        reject(request.error);
-      };
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
     });
   } catch (err) {
     console.error('Failed to delete audio file from IndexedDB:', err);
-    throw err;
+  }
+
+  // Also delete from Firebase Cloud Firestore
+  try {
+    await FirestoreService.deleteAudioFile(id);
+  } catch (cloudErr) {
+    console.warn('Notice: Failed to delete audio file from Cloud Firestore:', cloudErr);
   }
 }
 
 /**
- * Clear all audio files
+ * Clear all audio files from IndexedDB AND Cloud Firestore
  */
 export async function clearAllAudioFiles(): Promise<void> {
   try {
     const db = await openDB();
-    return new Promise((resolve, reject) => {
+    await new Promise<void>((resolve, reject) => {
       const transaction = db.transaction([STORE_NAME], 'readwrite');
       const store = transaction.objectStore(STORE_NAME);
       const request = store.clear();
-
-      request.onsuccess = () => {
-        resolve();
-      };
-
-      request.onerror = () => {
-        reject(request.error);
-      };
+      request.onsuccess = () => resolve();
+      request.onerror = () => reject(request.error);
     });
   } catch (err) {
     console.error('Failed to clear audio files from IndexedDB:', err);
-    throw err;
+  }
+
+  // Clear from Firebase Cloud Firestore
+  try {
+    await FirestoreService.clearAllAudioFiles();
+  } catch (cloudErr) {
+    console.warn('Notice: Failed to clear audio files from Cloud Firestore:', cloudErr);
   }
 }
 
