@@ -24,10 +24,12 @@ export const GuideView: React.FC<GuideViewProps> = ({ profile }) => {
     <div className="space-y-6 pb-16">
       
       {/* Top Header */}
-      <div className="bg-slate-800/80 border border-slate-700/60 rounded-3xl p-5 sm:p-6 shadow-xl flex items-center gap-3">
-        <div className="p-2.5 bg-emerald-950 text-emerald-400 rounded-xl border border-emerald-700/40">
-          <HelpCircle className="w-5 h-5" />
-        </div>
+      <div className="bg-slate-800/80 border border-slate-700/60 rounded-3xl p-5 sm:p-6 shadow-xl flex items-center gap-3.5">
+        <img 
+          src="/app-icon.jpg" 
+          alt="Logo Bel MI Syuriyah" 
+          className="w-12 h-12 rounded-2xl border border-amber-400/60 shadow-md object-cover shrink-0" 
+        />
         <div>
           <h2 className="text-lg font-bold text-white">Panduan Pengoperasian Bel Otomatis & Akustik {profile.name}</h2>
           <p className="text-xs text-slate-400">Petunjuk teknis instalasi speaker, efek echo madrasah, karakter suara ustadz/ustadzah, dan 3 bahasa</p>

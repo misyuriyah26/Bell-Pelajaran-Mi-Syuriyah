@@ -269,8 +269,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
 
           {/* Header */}
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
-            <div className="flex items-center gap-2 text-amber-300 text-xs font-bold uppercase tracking-wider">
-              <Bell className="w-4 h-4 text-amber-400 animate-wiggle" />
+            <div className="flex items-center gap-2.5 text-amber-300 text-xs font-bold uppercase tracking-wider">
+              <img 
+                src="/app-icon.jpg" 
+                alt="Logo Bel" 
+                className="w-6 h-6 rounded-lg object-cover border border-amber-400/50 shadow-sm" 
+              />
               <span>Bel Berikutnya Hari Ini</span>
             </div>
             {nextBell && (

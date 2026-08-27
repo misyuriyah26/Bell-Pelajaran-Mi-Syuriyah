@@ -38,9 +38,13 @@ export const ActiveBellOverlay: React.FC<ActiveBellOverlayProps> = ({
         <div className="flex items-center justify-between gap-4 border-b border-emerald-800/60 pb-3">
           
           <div className="flex items-center gap-3">
-            {/* Animated ringing bell */}
-            <div className="p-3 rounded-2xl bg-emerald-500 text-slate-950 shadow-lg shadow-emerald-500/50 flex items-center justify-center animate-wiggle">
-              <Bell className="w-7 h-7 fill-slate-950 animate-pulse" />
+            {/* Animated ringing bell with official emblem */}
+            <div className="w-12 h-12 rounded-2xl bg-emerald-500 p-0.5 border border-amber-300 shadow-lg shadow-emerald-500/50 flex items-center justify-center animate-wiggle shrink-0 overflow-hidden">
+              <img 
+                src="/app-icon.jpg" 
+                alt="Bel Sedang Berbunyi" 
+                className="w-full h-full object-cover rounded-xl" 
+              />
             </div>
 
             <div>
