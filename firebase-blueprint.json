@@ -1,0 +1,124 @@
+{
+  "entities": {
+    "User": {
+      "title": "User",
+      "description": "User profile and role in MI Syuriyah automatic bell application",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "email": { "type": "string", "maxLength": 256 },
+        "fullName": { "type": "string", "maxLength": 128 },
+        "role": { "type": "string", "enum": ["admin", "operator", "viewer"], "maxLength": 32 },
+        "roleTitle": { "type": "string", "maxLength": 64 },
+        "photoURL": { "type": "string", "maxLength": 1024 },
+        "lastLogin": { "type": "string", "maxLength": 64 },
+        "createdAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "email", "role"]
+    },
+    "SchoolProfile": {
+      "title": "SchoolProfile",
+      "description": "Madrasah identity and institutional information",
+      "type": "object",
+      "properties": {
+        "name": { "type": "string", "maxLength": 200 },
+        "tagline": { "type": "string", "maxLength": 300 },
+        "level": { "type": "string", "maxLength": 50 },
+        "npsn": { "type": "string", "maxLength": 50 },
+        "address": { "type": "string", "maxLength": 500 },
+        "headmaster": { "type": "string", "maxLength": 150 },
+        "phone": { "type": "string", "maxLength": 50 },
+        "academicYear": { "type": "string", "maxLength": 50 },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["name", "level", "address"]
+    },
+    "BellSchedule": {
+      "title": "BellSchedule",
+      "description": "Scheduled bell event configuration",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "time": { "type": "string", "maxLength": 10 },
+        "name": { "type": "string", "maxLength": 150 },
+        "category": { "type": "string", "maxLength": 50 },
+        "days": { "type": "array" },
+        "enabled": { "type": "boolean" },
+        "chimeType": { "type": "string", "maxLength": 50 },
+        "repeatChime": { "type": "number" },
+        "announcements": { "type": "object" },
+        "playChime": { "type": "boolean" },
+        "playTTS": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["id", "time", "name", "category", "days", "enabled"]
+    },
+    "BellSettings": {
+      "title": "BellSettings",
+      "description": "Global audio synthesis, volume, TTS, and holiday mode settings",
+      "type": "object",
+      "properties": {
+        "masterVolume": { "type": "number" },
+        "chimeVolume": { "type": "number" },
+        "ttsVolume": { "type": "number" },
+        "ttsRate": { "type": "number" },
+        "ttsPitch": { "type": "number" },
+        "preferredVoiceId": { "type": "string", "maxLength": 100 },
+        "preferredVoiceEn": { "type": "string", "maxLength": 100 },
+        "preferredVoiceAr": { "type": "string", "maxLength": 100 },
+        "voicePersona": { "type": "string", "maxLength": 50 },
+        "playPreChirp": { "type": "boolean" },
+        "realisticVoiceEnhance": { "type": "boolean" },
+        "defaultChimeType": { "type": "string", "maxLength": 50 },
+        "isMuted": { "type": "boolean" },
+        "holidayMode": { "type": "boolean" },
+        "holidayNote": { "type": "string", "maxLength": 200 },
+        "holidayDates": { "type": "array" },
+        "activePreset": { "type": "string", "maxLength": 50 },
+        "themePreset": { "type": "string", "maxLength": 50 },
+        "autoPlayAudioUnlocked": { "type": "boolean" },
+        "showVisualNotification": { "type": "boolean" },
+        "updatedAt": { "type": "string", "maxLength": 64 }
+      },
+      "required": ["masterVolume", "chimeVolume", "ttsVolume"]
+    },
+    "BellLog": {
+      "title": "BellLog",
+      "description": "Bell ringing execution log record",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string", "maxLength": 128 },
+        "timestamp": { "type": "string", "maxLength": 64 },
+        "timeStr": { "type": "string", "maxLength": 30 },
+        "dateStr": { "type": "string", "maxLength": 100 },
+        "eventName": { "type": "string", "maxLength": 200 },
+        "type": { "type": "string", "maxLength": 50 },
+        "status": { "type": "string", "maxLength": 50 },
+        "announcementText": { "type": "string", "maxLength": 500 }
+      },
+      "required": ["id", "timestamp", "timeStr", "eventName", "type", "status"]
+    }
+  },
+  "firestore": {
+    "/users/{userId}": {
+      "schema": "User",
+      "description": "User profile with role, email, and authentication metadata"
+    },
+    "/configs/school_profile": {
+      "schema": "SchoolProfile",
+      "description": "Primary madrasah profile and identity metadata"
+    },
+    "/configs/bell_settings": {
+      "schema": "BellSettings",
+      "description": "System audio, volume, TTS, and holiday mode settings"
+    },
+    "/schedules/{scheduleId}": {
+      "schema": "BellSchedule",
+      "description": "Bell ringing schedules and 3-language announcements"
+    },
+    "/bell_logs/{logId}": {
+      "schema": "BellLog",
+      "description": "Audited activity and historical ring logs"
+    }
+  }
+}

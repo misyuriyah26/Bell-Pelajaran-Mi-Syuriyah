@@ -1,0 +1,6 @@
+{
+  "name": "Bel Otomatis MI Syuriyah Pebatan",
+  "description": "Aplikasi bel otomatis sekolah madrasah ibtidaiyah dengan pengumuman suara 3 bahasa (Indonesia, Inggris, Arab), jadwal harian, synthesizer bel, dan kontrol real-time.",
+  "requestFramePermissions": ["microphone"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}

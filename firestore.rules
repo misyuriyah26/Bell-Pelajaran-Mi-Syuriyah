@@ -1,0 +1,101 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Default deny catch-all
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Helper functions
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isValidId(id) {
+      return id is string && id.size() > 0 && id.size() <= 128 && id.matches('^[a-zA-Z0-9_\\-]+$');
+    }
+
+    function isAdmin() {
+      return isSignedIn() && (
+        request.auth.token.email == 'misyuriyah26@gmail.com' ||
+        exists(/databases/$(database)/documents/admins/$(request.auth.uid))
+      );
+    }
+
+    function isValidUser(data) {
+      return data.keys().hasAll(['id', 'email', 'role']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.email is string && data.email.size() <= 256 &&
+        data.role in ['admin', 'operator', 'viewer'];
+    }
+
+    function isValidSchedule(data) {
+      return data.keys().hasAll(['id', 'time', 'name', 'category', 'days', 'enabled']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.time is string && data.time.size() <= 10 &&
+        data.name is string && data.name.size() <= 150 &&
+        data.category is string && data.category.size() <= 50 &&
+        data.days is list && data.days.size() <= 7 &&
+        data.enabled is bool;
+    }
+
+    function isValidBellSettings(data) {
+      return data.keys().hasAll(['masterVolume', 'chimeVolume', 'ttsVolume']) &&
+        data.masterVolume is number &&
+        data.chimeVolume is number &&
+        data.ttsVolume is number;
+    }
+
+    function isValidSchoolProfile(data) {
+      return data.keys().hasAll(['name', 'level', 'address']) &&
+        data.name is string && data.name.size() <= 200 &&
+        data.level is string && data.level.size() <= 50 &&
+        data.address is string && data.address.size() <= 500;
+    }
+
+    function isValidBellLog(data) {
+      return data.keys().hasAll(['id', 'timestamp', 'timeStr', 'eventName', 'type', 'status']) &&
+        data.id is string && data.id.size() <= 128 &&
+        data.timestamp is string && data.timestamp.size() <= 64 &&
+        data.timeStr is string && data.timeStr.size() <= 30 &&
+        data.eventName is string && data.eventName.size() <= 200 &&
+        data.type is string && data.type.size() <= 50 &&
+        data.status is string && data.status.size() <= 50;
+    }
+
+    // Connection testing doc
+    match /test/{docId} {
+      allow read, write: if true;
+    }
+
+    // User collection
+    match /users/{userId} {
+      allow get: if isSignedIn();
+      allow list: if isAdmin();
+      allow create, update: if isSignedIn() && (request.auth.uid == userId || isAdmin()) && isValidUser(request.resource.data);
+      allow delete: if isAdmin();
+    }
+
+    // Configs collection (school profile, bell settings)
+    match /configs/{configId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(configId);
+      allow delete: if isAdmin();
+    }
+
+    // Schedules collection
+    match /schedules/{scheduleId} {
+      allow get, list: if true;
+      allow create, update: if isValidId(scheduleId);
+      allow delete: if isValidId(scheduleId);
+    }
+
+    // Bell logs collection
+    match /bell_logs/{logId} {
+      allow get, list: if true;
+      allow create: if isValidId(logId);
+      allow update, delete: if isValidId(logId);
+    }
+  }
+}
