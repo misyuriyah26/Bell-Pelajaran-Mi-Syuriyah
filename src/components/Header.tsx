@@ -23,7 +23,8 @@ import {
   RefreshCw,
   ShieldCheck,
   Cloud,
-  Database
+  Database,
+  Download
 } from 'lucide-react';
 import { SchoolProfile, BellSettings, ThemePreset, AuthUser } from '../types';
 
@@ -125,9 +126,12 @@ export const Header: React.FC<HeaderProps> = ({
             {/* School Brand Identity */}
             <div className="flex items-center gap-2.5 shrink-0">
               {/* Official Seal Emblem */}
-              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-slate-950 border border-emerald-500/40 shadow-md text-amber-300 group transition-transform hover:scale-105">
-                <div className="absolute inset-0 rounded-xl border border-amber-400/25 rotate-6 pointer-events-none" />
-                <Bell className="w-5 h-5 text-amber-300 drop-shadow animate-pulse" />
+              <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-slate-950 border border-emerald-500/40 shadow-md group transition-transform hover:scale-105 overflow-hidden">
+                <img 
+                  src="/app-icon.jpg" 
+                  alt="Logo Bel MI Syuriyah" 
+                  className="w-full h-full object-cover" 
+                />
               </div>
 
               <div>

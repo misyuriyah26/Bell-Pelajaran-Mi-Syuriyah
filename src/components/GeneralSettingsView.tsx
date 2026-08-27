@@ -18,7 +18,11 @@ import {
   Moon,
   Globe,
   RefreshCw,
-  Sliders
+  Sliders,
+  Download,
+  Monitor,
+  Smartphone,
+  Chrome
 } from 'lucide-react';
 import { SchoolProfile, BellSettings, BellEvent, BellLog, ThemePreset } from '../types';
 import { 
@@ -618,6 +622,53 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
                   className="w-5 h-5 accent-emerald-500 rounded"
                 />
               </label>
+            </div>
+          </div>
+
+          {/* Chrome Download & PWA Card */}
+          <div className="bg-slate-900/90 border border-amber-400/40 rounded-3xl p-5 sm:p-6 shadow-xl space-y-4">
+            <div className="flex items-center justify-between pb-3 border-b border-slate-800">
+              <div className="flex items-center gap-3">
+                <img 
+                  src="/app-icon.jpg" 
+                  alt="Logo Bel Syuriyah" 
+                  className="w-10 h-10 rounded-xl border border-amber-400/60 shadow-md object-cover" 
+                />
+                <div>
+                  <h3 className="text-sm font-bold text-white">Unduh Aplikasi di Google Chrome (PWA)</h3>
+                  <p className="text-[11px] text-slate-400">Jalankan di Laptop, Komputer Sekolah, atau HP Android</p>
+                </div>
+              </div>
+              <span className="px-2.5 py-1 rounded-full text-[10px] font-bold bg-amber-950 text-amber-300 border border-amber-500/60 flex items-center gap-1.5 shadow-inner">
+                <Chrome className="w-3.5 h-3.5 text-amber-400" />
+                <span>PWA Siap</span>
+              </span>
+            </div>
+
+            <p className="text-xs text-slate-300 leading-relaxed">
+              Aplikasi ini mendukung Progressive Web App (PWA). Anda dapat memasang aplikasi langsung ke desktop tanpa harus membuka browser setiap hari, dan bel otomatis tetap beroperasi handal.
+            </p>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
+              <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                  <Monitor className="w-4 h-4" />
+                  <span>Di Laptop / PC (Chrome):</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Klik tombol <strong>"Install / Pasang Aplikasi"</strong> di bilah alamat URL atas Chrome (sebelah kanan icon bintang).
+                </p>
+              </div>
+
+              <div className="p-3 rounded-2xl bg-slate-950/80 border border-slate-800 space-y-1.5">
+                <div className="flex items-center gap-2 text-xs font-bold text-amber-300">
+                  <Smartphone className="w-4 h-4" />
+                  <span>Di HP / Tablet Android:</span>
+                </div>
+                <p className="text-[11px] text-slate-400 leading-relaxed">
+                  Buka menu titik 3 di pojok kanan atas Chrome, lalu pilih <strong>"Pasang aplikasi"</strong> atau <strong>"Tambahkan ke Layar Utama"</strong>.
+                </p>
+              </div>
             </div>
           </div>
 

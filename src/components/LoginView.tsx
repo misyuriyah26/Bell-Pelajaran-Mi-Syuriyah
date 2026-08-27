@@ -105,9 +105,11 @@ export const LoginView: React.FC<LoginViewProps> = ({
       {/* Top Floating Status Bar */}
       <header className="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-5 pb-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-2.5">
-          <div className="flex items-center justify-center w-8 h-8 rounded-xl bg-emerald-950 border border-emerald-600/40 text-amber-300 shadow-sm">
-            <Bell className="w-4 h-4 animate-pulse" />
-          </div>
+          <img 
+            src="/app-icon.jpg" 
+            alt="Logo Bel MI Syuriyah" 
+            className="w-9 h-9 rounded-xl border border-amber-400/60 shadow-md object-cover" 
+          />
           <div>
             <div className="text-xs font-bold text-white tracking-wide">{profile.name}</div>
             <div className="text-[10px] text-slate-400">Sistem Bel Otomatis &amp; Siaran 3 Bahasa</div>
@@ -159,9 +161,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
             {/* Seal & Institution Header */}
             <div className="space-y-3">
               <div className="inline-flex items-center justify-center relative group">
-                <div className="w-20 h-20 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-slate-950 border-2 border-amber-400/50 shadow-2xl shadow-emerald-950/80 flex items-center justify-center text-amber-300 transition-transform group-hover:scale-105">
-                  <div className="absolute inset-0 rounded-3xl border border-amber-400/20 rotate-6 pointer-events-none" />
-                  <Bell className="w-10 h-10 text-amber-300 drop-shadow-md" />
+                <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-slate-950 p-1 border-2 border-amber-400/60 shadow-2xl shadow-emerald-950/80 flex items-center justify-center text-amber-300 transition-transform group-hover:scale-105">
+                  <img 
+                    src="/app-icon.jpg" 
+                    alt="Logo Bel MI Syuriyah" 
+                    className="w-full h-full rounded-2xl object-cover" 
+                  />
                 </div>
               </div>
 

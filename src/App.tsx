@@ -35,6 +35,7 @@ import { GuideView } from './components/GuideView';
 import { ActiveBellOverlay } from './components/ActiveBellOverlay';
 import { ManualAnnounceModal } from './components/ManualAnnounceModal';
 import { LoginView } from './components/LoginView';
+import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { formatIndonesianDate, formatTime24 } from './utils/dateUtils';
 import { AuthUser } from './types';
 import { getStoredUser, saveStoredUser, isScreenLocked, setScreenLock } from './utils/auth';
@@ -576,6 +577,7 @@ export default function App() {
   if (!currentUser || isLocked) {
     return (
       <div id="school-bell-login-screen" className={`min-h-screen ${themeClass} flex flex-col font-sans transition-colors duration-300`}>
+        <PwaInstallPrompt />
         <LoginView
           profile={profile}
           currentTime={currentTime}
@@ -618,6 +620,8 @@ export default function App() {
         onManualCloudSync={handleManualCloudSync}
       />
 
+      {/* PWA Install Banner */}
+      <PwaInstallPrompt />
 
       {/* Main Content Area */}
       <main id="main-content-container" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">
