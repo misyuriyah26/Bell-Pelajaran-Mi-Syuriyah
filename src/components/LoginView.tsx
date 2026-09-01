@@ -15,13 +15,13 @@ import {
   Radio, 
   Info,
   Shield,
-  Cloud
+  CheckCircle2,
+  HelpCircle
 } from 'lucide-react';
 import { SchoolProfile, AuthUser } from '../types';
-import { authenticate } from '../utils/auth';
+import { authenticate, PRESET_USERS } from '../utils/auth';
 import { formatIndonesianDate, getHijriDate, formatTime24 } from '../utils/dateUtils';
 import { unlockAudioContext } from '../utils/audioEngine';
-import { signInWithGoogle } from '../lib/firebase';
 
 interface LoginViewProps {
   profile: SchoolProfile;
@@ -71,24 +71,10 @@ export const LoginView: React.FC<LoginViewProps> = ({
     }, 300);
   };
 
-  const handleGoogleLogin = async () => {
+  const handleSelectPreset = (user: typeof PRESET_USERS[0]) => {
+    setIdentifier(user.username);
+    setPassword(user.passwordHash);
     setErrorMessage('');
-    setIsLoading(true);
-    unlockAudioContext().catch(() => {});
-    if (onUnlockAudio && !audioUnlocked) {
-      onUnlockAudio();
-    }
-    try {
-      const user = await signInWithGoogle();
-      if (user) {
-        onLoginSuccess(user);
-      }
-    } catch (err: any) {
-      console.error('Google login error:', err);
-      setErrorMessage(err.message || 'Login dengan Google gagal. Silakan coba kembali.');
-    } finally {
-      setIsLoading(false);
-    }
   };
 
   return (
@@ -213,6 +199,36 @@ export const LoginView: React.FC<LoginViewProps> = ({
               </div>
             </div>
 
+            {/* Account Credentials Reference Box */}
+            <div className="p-3.5 rounded-2xl bg-slate-900/90 border border-emerald-800/40 text-left space-y-2 max-w-md mx-auto lg:mx-0">
+              <div className="flex items-center gap-2 text-xs font-bold text-emerald-400">
+                <KeyRound className="w-3.5 h-3.5" />
+                <span>Daftar Akun Masuk Sistem:</span>
+              </div>
+              <div className="grid grid-cols-2 gap-2 text-[11px]">
+                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <div className="text-slate-200 font-bold">1. Admin (Kepala)</div>
+                  <div className="text-emerald-400 font-mono">User: <strong>admin</strong></div>
+                  <div className="text-amber-400 font-mono">Pass: <strong>admin123</strong></div>
+                </div>
+                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <div className="text-slate-200 font-bold">2. Operator (Piket)</div>
+                  <div className="text-emerald-400 font-mono">User: <strong>operator</strong></div>
+                  <div className="text-amber-400 font-mono">Pass: <strong>piket123</strong></div>
+                </div>
+                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <div className="text-slate-200 font-bold">3. Dewan Guru</div>
+                  <div className="text-emerald-400 font-mono">User: <strong>guru</strong></div>
+                  <div className="text-amber-400 font-mono">Pass: <strong>guru123</strong></div>
+                </div>
+                <div className="p-2 rounded-xl bg-slate-950/80 border border-slate-800">
+                  <div className="text-slate-200 font-bold">4. Monitor Kelas</div>
+                  <div className="text-emerald-400 font-mono">User: <strong>monitor</strong></div>
+                  <div className="text-amber-400 font-mono">Pass: <strong>monitor123</strong></div>
+                </div>
+              </div>
+            </div>
+
             {/* Operational Info Note */}
             <div className="hidden lg:flex items-center gap-2.5 p-3 rounded-2xl bg-emerald-950/30 border border-emerald-800/40 text-xs text-slate-300">
               <Info className="w-4 h-4 text-emerald-400 shrink-0" />
@@ -331,50 +347,56 @@ export const LoginView: React.FC<LoginViewProps> = ({
                 )}
               </button>
 
-              {/* Cloud Google Sign In Option */}
-              <div className="relative py-2">
-                <div className="absolute inset-0 flex items-center">
-                  <div className="w-full border-t border-slate-800" />
+              {/* Quick Preset Accounts Section */}
+              <div className="pt-2">
+                <div className="relative py-2">
+                  <div className="absolute inset-0 flex items-center">
+                    <div className="w-full border-t border-slate-800" />
+                  </div>
+                  <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-400">
+                    <span className="bg-slate-900/90 px-3">Pilih Cepat Akun Madrasah (1-Klik)</span>
+                  </div>
                 </div>
-                <div className="relative flex justify-center text-[10px] uppercase font-bold text-slate-300">
-                  <span className="bg-slate-900/90 px-3">atau masuk dengan cloud</span>
+
+                <div className="grid grid-cols-2 gap-2 mt-1">
+                  {PRESET_USERS.map((usr) => (
+                    <button
+                      key={usr.id}
+                      type="button"
+                      onClick={() => handleSelectPreset(usr)}
+                      className={`p-2 rounded-xl text-left border transition-all flex flex-col justify-between ${
+                        identifier === usr.username
+                          ? 'bg-emerald-950/80 border-emerald-500 ring-1 ring-emerald-500'
+                          : 'bg-slate-950 hover:bg-slate-800/80 border-slate-800 hover:border-slate-700'
+                      }`}
+                    >
+                      <div className="flex items-center justify-between">
+                        <span className="text-sm">{usr.avatarIcon}</span>
+                        <span className={`text-[9px] font-bold px-1.5 py-0.5 rounded ${
+                          usr.role === 'admin' 
+                            ? 'bg-emerald-900/80 text-emerald-300' 
+                            : usr.role === 'operator'
+                            ? 'bg-amber-900/80 text-amber-300'
+                            : 'bg-sky-900/80 text-sky-300'
+                        }`}>
+                          {usr.role.toUpperCase()}
+                        </span>
+                      </div>
+                      <div className="mt-1">
+                        <div className="text-xs font-bold text-white leading-tight truncate">{usr.username}</div>
+                        <div className="text-[10px] text-slate-400 font-mono">Sandi: {usr.passwordHash}</div>
+                      </div>
+                    </button>
+                  ))}
                 </div>
               </div>
-
-              <button
-                id="btn-login-google-firebase"
-                type="button"
-                onClick={handleGoogleLogin}
-                disabled={isLoading}
-                className="w-full py-2.5 px-4 rounded-xl bg-slate-950 hover:bg-slate-800 text-slate-200 border border-slate-700 font-bold text-xs shadow-sm flex items-center justify-center gap-2.5 transition-all active:scale-95 disabled:opacity-50 hover:border-emerald-600/60"
-              >
-                <svg className="w-4 h-4" viewBox="0 0 24 24">
-                  <path
-                    fill="#4285F4"
-                    d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z"
-                  />
-                  <path
-                    fill="#34A853"
-                    d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z"
-                  />
-                  <path
-                    fill="#FBBC05"
-                    d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.06H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.94l2.85-2.22.81-.63z"
-                  />
-                  <path
-                    fill="#EA4335"
-                    d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.06l3.66 2.84c.87-2.6 3.3-4.52 6.16-4.52z"
-                  />
-                </svg>
-                <span>Masuk dengan Akun Google (Firebase Auth)</span>
-              </button>
             </form>
 
             {/* Security Indicator Footer */}
-            <div className="mt-6 pt-4 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
+            <div className="mt-5 pt-3.5 border-t border-slate-800 flex items-center justify-between text-xs text-slate-400">
               <span className="flex items-center gap-1.5">
                 <ShieldCheck className="w-4 h-4 text-emerald-400" />
-                <span>Autentikasi Aman &amp; Terenkripsi</span>
+                <span>Autentikasi Internal Madrasah</span>
               </span>
               <span className="text-[11px] text-slate-400">
                 MI Syuriyah Pebatan
