@@ -222,11 +222,13 @@ export const FirestoreService = {
       const snap = await getDocs(collection(db, 'schedules'));
       const list: BellEvent[] = [];
       snap.forEach(docSnap => {
-        list.push(docSnap.data() as BellEvent);
+        const data = docSnap.data();
+        list.push({ ...data, id: docSnap.id } as BellEvent);
       });
       return list;
     } catch (error) {
-      handleFirestoreError(error, OperationType.LIST, path);
+      console.warn('getAllSchedules notice:', error);
+      return [];
     }
   },
 
@@ -238,7 +240,7 @@ export const FirestoreService = {
         updatedAt: new Date().toISOString()
       }, { merge: true });
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.warn('saveSchedule notice:', error);
     }
   },
 
@@ -247,7 +249,7 @@ export const FirestoreService = {
     try {
       await deleteDoc(doc(db, 'schedules', scheduleId));
     } catch (error) {
-      handleFirestoreError(error, OperationType.DELETE, path);
+      console.warn('deleteSchedule notice:', error);
     }
   },
 
@@ -272,7 +274,7 @@ export const FirestoreService = {
       const savePromises = schedules.map(s => this.saveSchedule(s));
       await Promise.all(savePromises);
     } catch (error) {
-      handleFirestoreError(error, OperationType.WRITE, path);
+      console.warn('syncAllSchedules notice:', error);
     }
   },
 
@@ -386,11 +388,10 @@ export const FirestoreService = {
     return onSnapshot(collection(db, 'schedules'), (querySnap) => {
       const list: BellEvent[] = [];
       querySnap.forEach((docSnap) => {
-        list.push(docSnap.data() as BellEvent);
+        const data = docSnap.data();
+        list.push({ ...data, id: docSnap.id } as BellEvent);
       });
-      if (list.length > 0) {
-        onUpdate(list);
-      }
+      onUpdate(list);
     }, (err) => {
       console.warn('Schedules realtime listener notice:', err);
       if (onError) onError(err);

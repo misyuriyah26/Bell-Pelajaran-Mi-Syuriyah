@@ -34,6 +34,7 @@ import { ScheduleAudioUploader } from './ScheduleAudioUploader';
 interface ScheduleViewProps {
   schedules: BellEvent[];
   onSaveSchedules: (newSchedules: BellEvent[]) => void;
+  onDeleteSchedule?: (id: string) => void;
   onTriggerBell: (event: BellEvent, type: 'manual') => void;
   settings: BellSettings;
 }
@@ -104,6 +105,7 @@ const TEMPLATES: Record<string, { name: string; category: BellCategory; id: stri
 export const ScheduleView: React.FC<ScheduleViewProps> = ({
   schedules,
   onSaveSchedules,
+  onDeleteSchedule,
   onTriggerBell,
   settings
 }) => {
@@ -114,6 +116,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [deleteTarget, setDeleteTarget] = useState<BellEvent | null>(null);
+  const [resetConfirmType, setResetConfirmType] = useState<'reset' | 'clear' | null>(null);
   const [formError, setFormError] = useState<string | null>(null);
   const [feedbackToast, setFeedbackToast] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
   
@@ -164,9 +167,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   const handleConfirmDelete = () => {
     if (!deleteTarget) return;
     const deletedName = deleteTarget.name;
-    const updated = schedules.filter(s => s.id !== deleteTarget.id);
-    onSaveSchedules(updated);
+    const targetId = deleteTarget.id;
+    const updated = schedules.filter(s => s.id !== targetId);
+
+    if (onDeleteSchedule) {
+      onDeleteSchedule(targetId);
+    } else {
+      onSaveSchedules(updated);
+    }
+
     setDeleteTarget(null);
+    if (editingId === targetId) {
+      setIsModalOpen(false);
+      setEditingId(null);
+    }
     showToast(`Jadwal "${deletedName}" berhasil dihapus.`, 'success');
   };
 
@@ -394,16 +408,20 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
             Mode Ramadhan
           </button>
           <button
-            onClick={() => {
-              if (window.confirm('Reset seluruh jadwal ke bawaan asli MI Syuriyah Pebatan?')) {
-                onSaveSchedules(DEFAULT_BELL_SCHEDULES);
-              }
-            }}
+            onClick={() => setResetConfirmType('reset')}
             className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-700 transition-all flex items-center gap-1 font-medium"
             title="Reset ke pengaturan pabrik"
           >
             <RotateCcw className="w-3.5 h-3.5" />
             <span>Reset Awal</span>
+          </button>
+          <button
+            onClick={() => setResetConfirmType('clear')}
+            className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-rose-950 text-slate-400 hover:text-rose-300 border border-slate-700 transition-all flex items-center gap-1 font-medium"
+            title="Hapus / Kosongkan semua jadwal"
+          >
+            <Trash2 className="w-3.5 h-3.5" />
+            <span>Kosongkan Semua</span>
           </button>
         </div>
       </div>
@@ -654,7 +672,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               </div>
               <div>
                 <h3 className="text-base font-bold text-white">Hapus Jadwal Bel?</h3>
-                <p className="text-xs text-slate-400">Tindakan ini akan menghapus jadwal dari daftar dan cloud</p>
+                <p className="text-xs text-slate-400">Tindakan ini akan menghapus jadwal dari daftar dan sinkronisasi cloud</p>
               </div>
             </div>
 
@@ -682,6 +700,56 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               >
                 <Trash2 className="w-4 h-4" />
                 <span>Ya, Hapus Jadwal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Reset or Clear All */}
+      {resetConfirmType && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-800/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-950/80 text-rose-400 rounded-2xl border border-rose-700/50">
+                <RotateCcw className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">
+                  {resetConfirmType === 'reset' ? 'Reset ke Jadwal Bawaan?' : 'Kosongkan Semua Jadwal?'}
+                </h3>
+                <p className="text-xs text-slate-400">
+                  {resetConfirmType === 'reset' 
+                    ? 'Seluruh jadwal saat ini akan digantikan dengan jadwal standar resmi MI Syuriyah Pebatan' 
+                    : 'Seluruh jadwal bel aktif akan dihapus dari daftar'}
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setResetConfirmType(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={() => {
+                  if (resetConfirmType === 'reset') {
+                    onSaveSchedules(DEFAULT_BELL_SCHEDULES);
+                    showToast('Jadwal berhasil di-reset ke bawaan resmi.');
+                  } else {
+                    onSaveSchedules([]);
+                    showToast('Seluruh jadwal berhasil dikosongkan.', 'info');
+                  }
+                  setResetConfirmType(null);
+                }}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+              >
+                <Check className="w-4 h-4" />
+                <span>{resetConfirmType === 'reset' ? 'Ya, Reset Bawaan' : 'Ya, Kosongkan'}</span>
               </button>
             </div>
           </div>
@@ -986,21 +1054,39 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
               />
 
               {/* Action Buttons */}
-              <div className="flex items-center justify-end gap-3 pt-4 border-t border-slate-800">
-                <button
-                  type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
-                >
-                  Batal
-                </button>
-                <button
-                  type="submit"
-                  className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
-                >
-                  <Check className="w-4 h-4" />
-                  <span>Simpan Jadwal</span>
-                </button>
+              <div className="flex items-center justify-between gap-3 pt-4 border-t border-slate-800">
+                {editingId ? (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      const item = schedules.find(s => s.id === editingId);
+                      if (item) {
+                        setDeleteTarget(item);
+                      }
+                    }}
+                    className="px-3.5 py-2 bg-rose-950/80 hover:bg-rose-900 text-rose-300 border border-rose-800/60 rounded-xl text-xs font-semibold flex items-center gap-1.5 transition-colors"
+                  >
+                    <Trash2 className="w-4 h-4" />
+                    <span>Hapus Jadwal</span>
+                  </button>
+                ) : <div />}
+
+                <div className="flex items-center gap-2.5">
+                  <button
+                    type="button"
+                    onClick={() => setIsModalOpen(false)}
+                    className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
+                  >
+                    Batal
+                  </button>
+                  <button
+                    type="submit"
+                    className="px-5 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+                  >
+                    <Check className="w-4 h-4" />
+                    <span>Simpan Jadwal</span>
+                  </button>
+                </div>
               </div>
 
             </form>

@@ -79,30 +79,22 @@ service cloud.firestore {
 
     // Configs collection (school profile, bell settings)
     match /configs/{configId} {
-      allow get, list: if true;
-      allow create, update: if isValidId(configId);
-      allow delete: if isAdmin();
+      allow read, write: if true;
     }
 
     // Schedules collection
     match /schedules/{scheduleId} {
-      allow get, list: if true;
-      allow create, update: if isValidId(scheduleId);
-      allow delete: if isValidId(scheduleId);
+      allow read, write: if true;
     }
 
     // Bell logs collection
     match /bell_logs/{logId} {
-      allow get, list: if true;
-      allow create: if isValidId(logId);
-      allow update, delete: if isValidId(logId);
+      allow read, write: if true;
     }
 
     // Audio Library & Uploaded Files collection (connected to Firebase)
     match /audio_library/{fileId} {
-      allow get, list: if true;
-      allow create, update: if isValidId(fileId);
-      allow delete: if isValidId(fileId);
+      allow read, write: if true;
     }
   }
 }

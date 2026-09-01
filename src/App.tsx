@@ -254,6 +254,18 @@ export default function App() {
     FirestoreService.batchSaveSchedules(newSchedules).catch(() => {});
   };
 
+  const handleDeleteSchedule = async (scheduleId: string) => {
+    const updated = schedules.filter(s => s.id !== scheduleId);
+    setSchedules(updated);
+    saveSchedules(updated);
+    try {
+      await FirestoreService.deleteSchedule(scheduleId);
+      await FirestoreService.syncAllSchedules(updated);
+    } catch (err) {
+      console.warn('Schedule deletion cloud sync notice:', err);
+    }
+  };
+
   const handleSaveSettings = (newSettings: BellSettings) => {
     setSettings(newSettings);
     saveSettings(newSettings);
@@ -677,6 +689,7 @@ export default function App() {
           <ScheduleView
             schedules={schedules}
             onSaveSchedules={handleSaveSchedules}
+            onDeleteSchedule={handleDeleteSchedule}
             onTriggerBell={(event, type) => triggerBellEvent(event, type)}
             settings={settings}
           />
