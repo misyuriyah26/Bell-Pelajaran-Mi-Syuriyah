@@ -13,11 +13,13 @@ import { ActivePlaybackState } from '../types';
 interface ActiveBellOverlayProps {
   playbackState: ActivePlaybackState;
   onStop: () => void;
+  logoUrl?: string;
 }
 
 export const ActiveBellOverlay: React.FC<ActiveBellOverlayProps> = ({
   playbackState,
-  onStop
+  onStop,
+  logoUrl = '/app-icon.jpg'
 }) => {
   if (!playbackState.isPlaying) return null;
 
@@ -41,9 +43,12 @@ export const ActiveBellOverlay: React.FC<ActiveBellOverlayProps> = ({
             {/* Animated ringing bell with official emblem */}
             <div className="w-12 h-12 rounded-2xl bg-emerald-500 p-0.5 border border-amber-300 shadow-lg shadow-emerald-500/50 flex items-center justify-center animate-wiggle shrink-0 overflow-hidden">
               <img 
-                src="/app-icon.jpg" 
+                src={logoUrl || "/app-icon.jpg"} 
                 alt="Bel Sedang Berbunyi" 
                 className="w-full h-full object-cover rounded-xl" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/app-icon.jpg";
+                }}
               />
             </div>
 

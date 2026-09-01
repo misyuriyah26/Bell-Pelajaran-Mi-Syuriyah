@@ -106,9 +106,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
       <header className="max-w-6xl w-full mx-auto px-4 sm:px-6 pt-5 pb-3 flex items-center justify-between z-10">
         <div className="flex items-center gap-2.5">
           <img 
-            src="/app-icon.jpg" 
-            alt="Logo Bel MI Syuriyah" 
+            src={profile.logoUrl || "/app-icon.jpg"} 
+            alt={profile.name || "Logo Bel MI Syuriyah"} 
             className="w-9 h-9 rounded-xl border border-amber-400/60 shadow-md object-cover" 
+            onError={(e) => {
+              (e.currentTarget as HTMLImageElement).src = "/app-icon.jpg";
+            }}
           />
           <div>
             <div className="text-xs font-bold text-white tracking-wide">{profile.name}</div>
@@ -163,9 +166,12 @@ export const LoginView: React.FC<LoginViewProps> = ({
               <div className="inline-flex items-center justify-center relative group">
                 <div className="w-24 h-24 rounded-3xl bg-gradient-to-br from-emerald-600 via-emerald-800 to-slate-950 p-1 border-2 border-amber-400/60 shadow-2xl shadow-emerald-950/80 flex items-center justify-center text-amber-300 transition-transform group-hover:scale-105">
                   <img 
-                    src="/app-icon.jpg" 
-                    alt="Logo Bel MI Syuriyah" 
+                    src={profile.logoUrl || "/app-icon.jpg"} 
+                    alt={profile.name || "Logo Bel MI Syuriyah"} 
                     className="w-full h-full rounded-2xl object-cover" 
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = "/app-icon.jpg";
+                    }}
                   />
                 </div>
               </div>

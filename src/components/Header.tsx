@@ -128,9 +128,12 @@ export const Header: React.FC<HeaderProps> = ({
               {/* Official Seal Emblem */}
               <div className="relative flex items-center justify-center w-10 h-10 rounded-xl bg-gradient-to-br from-emerald-700 via-emerald-800 to-slate-950 border border-emerald-500/40 shadow-md group transition-transform hover:scale-105 overflow-hidden">
                 <img 
-                  src="/app-icon.jpg" 
-                  alt="Logo Bel MI Syuriyah" 
+                  src={profile.logoUrl || "/app-icon.jpg"} 
+                  alt={profile.name || "Logo Bel MI Syuriyah"} 
                   className="w-full h-full object-cover" 
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = "/app-icon.jpg";
+                  }}
                 />
               </div>
 

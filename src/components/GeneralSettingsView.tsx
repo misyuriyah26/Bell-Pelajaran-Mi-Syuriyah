@@ -22,24 +22,27 @@ import {
   Download,
   Monitor,
   Smartphone,
-  Chrome
+  Chrome,
+  Image as ImageIcon,
+  Upload,
+  Trash2,
+  Eye,
+  ExternalLink,
+  Copy,
+  Layers,
+  Flame,
+  Cloud,
+  Database,
+  UploadCloud,
+  DownloadCloud
 } from 'lucide-react';
 import { SchoolProfile, BellSettings, BellEvent, BellLog, ThemePreset } from '../types';
-import { 
-  DEFAULT_SCHOOL_PROFILE, 
-  DEFAULT_SETTINGS, 
-  DEFAULT_BELL_SCHEDULES 
-} from '../data/defaultSchedules';
+import { DEFAULT_SCHOOL_PROFILE, DEFAULT_SETTINGS, DEFAULT_BELL_SCHEDULES } from '../data/defaultSchedules';
 import { exportAllDataAsJSON, downloadJSONBackup } from '../utils/storage';
-import { 
-  getStoredHijriAdjustment, 
-  saveStoredHijriAdjustment, 
-  syncHijriWithNuOnline, 
-  calculateNuFalakiyahDate 
-} from '../utils/hijriNuService';
-import { FirestoreService, testFirestoreConnection } from '../lib/firebase';
+import { getStoredHijriAdjustment, syncHijriWithNuOnline } from '../utils/dateUtils';
+import { saveStoredHijriAdjustment } from '../utils/hijriNuService';
+import { FirestoreService } from '../lib/firebase';
 import { getAllAudioFiles, saveMultipleAudioFiles } from '../utils/audioLibraryStorage';
-import { Cloud, Database, UploadCloud, DownloadCloud } from 'lucide-react';
 
 interface GeneralSettingsViewProps {
   profile: SchoolProfile;
@@ -110,9 +113,113 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
   const [isHijriSyncing, setIsHijriSyncing] = useState(false);
   const [hijriSyncMsg, setHijriSyncMsg] = useState<string | null>(null);
 
+  // Sync internal state when external profile changes via Firestore
+  React.useEffect(() => {
+    setProfileForm({ ...profile });
+  }, [profile]);
+
+  // Hidden File Input Refs
+  const logoInputRef = React.useRef<HTMLInputElement>(null);
+  const faviconInputRef = React.useRef<HTMLInputElement>(null);
+
   // Cloud Sync State
   const [isCloudSyncing, setIsCloudSyncing] = useState(false);
   const [cloudMsg, setCloudMsg] = useState<{ type: 'success' | 'error'; text: string } | null>(null);
+
+  // Helper for image compression to ensure lightweight Firestore document storage
+  const compressImage = (file: File, maxDim: number = 400): Promise<string> => {
+    return new Promise((resolve) => {
+      const reader = new FileReader();
+      reader.onload = (readerEvent) => {
+        const img = new window.Image();
+        img.onload = () => {
+          const canvas = document.createElement('canvas');
+          let width = img.width;
+          let height = img.height;
+          if (width > maxDim || height > maxDim) {
+            if (width > height) {
+              height = Math.round((height * maxDim) / width);
+              width = maxDim;
+            } else {
+              width = Math.round((width * maxDim) / height);
+              height = maxDim;
+            }
+          }
+          canvas.width = width;
+          canvas.height = height;
+          const ctx = canvas.getContext('2d');
+          if (!ctx) {
+            resolve(readerEvent.target?.result as string);
+            return;
+          }
+          ctx.drawImage(img, 0, 0, width, height);
+          const isTransparent = file.type === 'image/png' || file.type === 'image/svg+xml' || file.type === 'image/webp';
+          const resultData = canvas.toDataURL(isTransparent ? 'image/png' : 'image/jpeg', 0.90);
+          resolve(resultData);
+        };
+        img.onerror = () => resolve(readerEvent.target?.result as string);
+        img.src = readerEvent.target?.result as string;
+      };
+      reader.readAsDataURL(file);
+    });
+  };
+
+  const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImage(file, 400);
+      const updated: SchoolProfile = { ...profileForm, logoUrl: dataUrl };
+      setProfileForm(updated);
+      onSaveProfile(updated);
+      setIsSavedNotice(true);
+      setTimeout(() => setIsSavedNotice(false), 3000);
+    } catch (err) {
+      console.error('Logo upload error:', err);
+    }
+    e.target.value = '';
+  };
+
+  const handleFaviconUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    try {
+      const dataUrl = await compressImage(file, 192);
+      const updated: SchoolProfile = { ...profileForm, faviconUrl: dataUrl };
+      setProfileForm(updated);
+      onSaveProfile(updated);
+      setIsSavedNotice(true);
+      setTimeout(() => setIsSavedNotice(false), 3000);
+    } catch (err) {
+      console.error('Favicon upload error:', err);
+    }
+    e.target.value = '';
+  };
+
+  const handleUseLogoAsFavicon = () => {
+    const targetLogo = profileForm.logoUrl || '/app-icon.jpg';
+    const updated: SchoolProfile = { ...profileForm, faviconUrl: targetLogo };
+    setProfileForm(updated);
+    onSaveProfile(updated);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 3000);
+  };
+
+  const handleResetLogo = () => {
+    const updated: SchoolProfile = { ...profileForm, logoUrl: '/app-icon.jpg' };
+    setProfileForm(updated);
+    onSaveProfile(updated);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 3000);
+  };
+
+  const handleResetFavicon = () => {
+    const updated: SchoolProfile = { ...profileForm, faviconUrl: '/icon-192.png' };
+    setProfileForm(updated);
+    onSaveProfile(updated);
+    setIsSavedNotice(true);
+    setTimeout(() => setIsSavedNotice(false), 3000);
+  };
 
   const handlePushToCloud = async () => {
     setIsCloudSyncing(true);
@@ -340,6 +447,283 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
               </button>
             );
           })}
+        </div>
+      </div>
+
+      {/* Cloud Branding: Upload Icon Aplikasi & Favicon (Connected to all users) */}
+      <div id="branding-settings-panel" className="bg-slate-900/90 border border-slate-800 rounded-3xl p-5 sm:p-6 shadow-xl space-y-5">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+          <div className="flex items-center gap-2.5">
+            <div className="p-2.5 bg-emerald-950/90 text-emerald-300 rounded-2xl border border-emerald-500/30">
+              <ImageIcon className="w-5 h-5" />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <h3 className="text-sm sm:text-base font-bold text-white">Ikon Aplikasi &amp; Favicon Madrasah</h3>
+                <span className="px-2 py-0.5 bg-emerald-950 text-emerald-300 border border-emerald-600/50 rounded-full text-[10px] font-extrabold flex items-center gap-1">
+                  <Cloud className="w-3 h-3 text-emerald-400" />
+                  <span>Real-Time Cloud</span>
+                </span>
+              </div>
+              <p className="text-xs text-slate-400">
+                Upload logo resmi madrasah dan ikon favicon tab peramban. Terhubung langsung ke seluruh pengguna melalui Firebase Firestore secara otomatis.
+              </p>
+            </div>
+          </div>
+
+          <div className="flex items-center gap-2">
+            <button
+              type="button"
+              onClick={handleUseLogoAsFavicon}
+              disabled={!profileForm.logoUrl}
+              className="px-3 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-200 text-xs font-semibold border border-slate-700 transition-colors flex items-center gap-1.5 disabled:opacity-50"
+              title="Salin logo aplikasi menjadi favicon tab browser"
+            >
+              <Copy className="w-3.5 h-3.5 text-emerald-400" />
+              <span>Samakan Favicon &amp; Logo</span>
+            </button>
+          </div>
+        </div>
+
+        {/* 2-Column Grid: App Icon & Tab Favicon */}
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+          
+          {/* 1. App Icon / Header Logo Panel */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-white">
+                  <Sparkles className="w-4 h-4 text-amber-400" />
+                  <span>1. Ikon Aplikasi Web &amp; Logo Header</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                  Header &amp; PWA
+                </span>
+              </div>
+
+              {/* Live Header Simulation Mockup */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-inner space-y-2">
+                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Eye className="w-3 h-3 text-emerald-400" /> Pratinjau Tampilan Header Navigasi:
+                </span>
+                <div className="flex items-center gap-2.5 bg-slate-950/90 border border-slate-800 rounded-lg p-2">
+                  <div className="w-8 h-8 rounded-lg overflow-hidden border border-emerald-500/40 bg-slate-900 shrink-0 shadow-md">
+                    <img 
+                      src={profileForm.logoUrl || '/app-icon.jpg'} 
+                      alt="Pratinjau Logo" 
+                      className="w-full h-full object-cover"
+                      onError={(e) => {
+                        (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                      }}
+                    />
+                  </div>
+                  <div className="min-w-0">
+                    <div className="text-xs font-bold text-white truncate font-display">
+                      {profileForm.name || 'MI Syuriyah Pebatan'}
+                    </div>
+                    <div className="text-[9px] text-slate-400 truncate">
+                      TP {profileForm.academicYear || '2026/2027'} • Bel 3 Bahasa
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Large Image Details */}
+              <div className="flex items-center gap-4 bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
+                <div className="w-16 h-16 rounded-xl overflow-hidden border-2 border-emerald-500/50 bg-slate-950 shadow-lg shrink-0 flex items-center justify-center">
+                  <img 
+                    src={profileForm.logoUrl || '/app-icon.jpg'} 
+                    alt="Logo Penuh" 
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                    }}
+                  />
+                </div>
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold text-slate-200">Rekomendasi Format Logo</p>
+                  <p className="text-[11px] text-slate-400">PNG / JPG / WebP / SVG (Transparan / Persegi)</p>
+                  <p className="text-[10px] text-emerald-400 font-medium">Otomatis dioptimalkan untuk penyimpanan cloud</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Logo Actions */}
+            <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <input
+                type="file"
+                ref={logoInputRef}
+                onChange={handleLogoUpload}
+                accept="image/png,image/jpeg,image/svg+xml,image/webp"
+                className="hidden"
+              />
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => logoInputRef.current?.click()}
+                  className="px-4 py-2 bg-emerald-600 hover:bg-emerald-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Pilih &amp; Upload Logo</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetLogo}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+                  title="Kembalikan ke logo resmi bawaan"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1 text-[11px]">
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = { ...profileForm, logoUrl: '/app-icon.jpg' };
+                    setProfileForm(updated);
+                    onSaveProfile(updated);
+                  }}
+                  className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                >
+                  Logo Hijau
+                </button>
+                <button
+                  type="button"
+                  onClick={() => {
+                    const updated = { ...profileForm, logoUrl: '/icon-192.png' };
+                    setProfileForm(updated);
+                    onSaveProfile(updated);
+                  }}
+                  className="px-2 py-1 rounded bg-slate-800 hover:bg-slate-700 text-slate-300 text-[10px]"
+                >
+                  Ikon PWA
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* 2. Favicon / Browser Tab Icon Panel */}
+          <div className="bg-slate-950/70 border border-slate-800 rounded-2xl p-4 sm:p-5 space-y-4 flex flex-col justify-between">
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-2 text-xs font-bold text-white">
+                  <Chrome className="w-4 h-4 text-sky-400" />
+                  <span>2. Ikon Favicon Tab Browser (Peramban)</span>
+                </div>
+                <span className="text-[10px] font-mono text-slate-400 bg-slate-900 px-2 py-0.5 rounded-md border border-slate-800">
+                  Tab 16x16 / 32x32
+                </span>
+              </div>
+
+              {/* Realistic Browser Tab Simulation Mockup */}
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-3 shadow-inner space-y-2">
+                <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                  <Globe className="w-3 h-3 text-sky-400" /> Pratinjau Tampilan Tab Browser:
+                </span>
+                
+                {/* Browser Tab Strip Mockup */}
+                <div className="bg-slate-950 border border-slate-800 rounded-lg overflow-hidden shadow-md">
+                  {/* Top Window Bar */}
+                  <div className="bg-slate-900/90 px-3 py-1.5 border-b border-slate-800 flex items-center gap-1.5">
+                    <span className="w-2 h-2 rounded-full bg-rose-500 inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-amber-500 inline-block" />
+                    <span className="w-2 h-2 rounded-full bg-emerald-500 inline-block" />
+                    <span className="text-[9px] text-slate-500 ml-2 font-mono">Google Chrome / Edge / Safari</span>
+                  </div>
+
+                  {/* Active Tab */}
+                  <div className="p-2 bg-slate-950 flex items-center">
+                    <div className="bg-slate-900 border border-slate-800 rounded-t-lg px-2.5 py-1.5 flex items-center gap-2 max-w-[240px] shadow-sm">
+                      <div className="w-4 h-4 rounded overflow-hidden shrink-0 bg-slate-800 flex items-center justify-center">
+                        <img 
+                          src={profileForm.faviconUrl || profileForm.logoUrl || '/icon-192.png'} 
+                          alt="Favicon Tab" 
+                          className="w-full h-full object-contain"
+                          onError={(e) => {
+                            (e.currentTarget as HTMLImageElement).src = '/icon-192.png';
+                          }}
+                        />
+                      </div>
+                      <span className="text-[11px] font-semibold text-slate-200 truncate">
+                        Bel Otomatis - {profileForm.name || 'MI Syuriyah'}
+                      </span>
+                      <span className="text-[10px] text-slate-500 hover:text-slate-300 ml-auto cursor-pointer">×</span>
+                    </div>
+                  </div>
+                </div>
+              </div>
+
+              {/* Favicon Details */}
+              <div className="flex items-center gap-4 bg-slate-900/60 border border-slate-800/80 rounded-xl p-3">
+                <div className="w-12 h-12 rounded-xl overflow-hidden border-2 border-sky-500/50 bg-slate-950 shadow-lg shrink-0 flex items-center justify-center p-1">
+                  <img 
+                    src={profileForm.faviconUrl || profileForm.logoUrl || '/icon-192.png'} 
+                    alt="Favicon Tab Penuh" 
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/icon-192.png';
+                    }}
+                  />
+                </div>
+                <div className="text-xs space-y-1">
+                  <p className="font-semibold text-slate-200">Ikon Tab &amp; Pintasan Layar Utama</p>
+                  <p className="text-[11px] text-slate-400">Format: PNG / ICO / SVG (Ukuran optimal 32x32 s/d 192x192)</p>
+                  <p className="text-[10px] text-sky-400 font-medium">Berubah langsung pada tab semua laptop staf &amp; siswa</p>
+                </div>
+              </div>
+            </div>
+
+            {/* Favicon Actions */}
+            <div className="pt-2 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              <input
+                type="file"
+                ref={faviconInputRef}
+                onChange={handleFaviconUpload}
+                accept="image/png,image/x-icon,image/svg+xml,image/jpeg,image/webp"
+                className="hidden"
+              />
+              
+              <div className="flex items-center gap-2">
+                <button
+                  type="button"
+                  onClick={() => faviconInputRef.current?.click()}
+                  className="px-4 py-2 bg-sky-600 hover:bg-sky-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+                >
+                  <Upload className="w-3.5 h-3.5" />
+                  <span>Upload Favicon</span>
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResetFavicon}
+                  className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition-colors"
+                  title="Kembalikan ke favicon bawaan"
+                >
+                  Reset
+                </button>
+              </div>
+
+              <div className="flex items-center gap-1.5 text-[11px] text-slate-400">
+                <CheckCircle2 className="w-3.5 h-3.5 text-emerald-400" />
+                <span>Auto-PWA Icon</span>
+              </div>
+            </div>
+          </div>
+
+        </div>
+
+        {/* Multi-Device Cloud Synchronization Info Footer */}
+        <div className="p-3.5 rounded-2xl bg-emerald-950/40 border border-emerald-700/40 flex items-start sm:items-center gap-3">
+          <div className="p-2 rounded-xl bg-emerald-900/60 text-emerald-400 shrink-0 border border-emerald-600/40">
+            <Cloud className="w-4 h-4" />
+          </div>
+          <div className="text-xs text-slate-300">
+            <span className="font-bold text-white">Sinkronisasi Cloud Aktif: </span>
+            Setiap perubahan logo atau favicon yang Anda simpan akan disiarkan (*broadcast*) secara instan ke seluruh tab browser dan layar monitor guru yang sedang membuka aplikasi ini.
+          </div>
         </div>
       </div>
 

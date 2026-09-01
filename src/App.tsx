@@ -65,6 +65,35 @@ export default function App() {
   // Real-Time Clock State (updates every 1000ms)
   const [currentTime, setCurrentTime] = useState<Date>(new Date());
 
+  // Dynamic Favicon & Tab Title Synchronization across all users
+  useEffect(() => {
+    if (typeof document === 'undefined') return;
+
+    // 1. Update Tab Favicon
+    const targetFavicon = profile.faviconUrl || profile.logoUrl || '/icon-192.png';
+    let iconLink = document.querySelector("link[rel~='icon']") as HTMLLinkElement | null;
+    if (!iconLink) {
+      iconLink = document.createElement('link');
+      iconLink.rel = 'icon';
+      document.head.appendChild(iconLink);
+    }
+    iconLink.href = targetFavicon;
+
+    // Apple touch icon
+    let appleIconLink = document.querySelector("link[rel='apple-touch-icon']") as HTMLLinkElement | null;
+    if (!appleIconLink) {
+      appleIconLink = document.createElement('link');
+      appleIconLink.rel = 'apple-touch-icon';
+      document.head.appendChild(appleIconLink);
+    }
+    appleIconLink.href = profile.logoUrl || targetFavicon;
+
+    // 2. Update Browser Title
+    if (profile.name) {
+      document.title = `Bel Otomatis - ${profile.name}`;
+    }
+  }, [profile.faviconUrl, profile.logoUrl, profile.name]);
+
   // Playback Active State
   const [playbackState, setPlaybackState] = useState<ActivePlaybackState>({
     isPlaying: false,
@@ -591,6 +620,7 @@ export default function App() {
           <ActiveBellOverlay
             playbackState={playbackState}
             onStop={handleStopPlayback}
+            logoUrl={profile.logoUrl}
           />
         )}
       </div>
@@ -699,6 +729,7 @@ export default function App() {
         <ActiveBellOverlay
           playbackState={playbackState}
           onStop={handleStopPlayback}
+          logoUrl={profile.logoUrl}
         />
       )}
 

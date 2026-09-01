@@ -8,7 +8,9 @@ export const DEFAULT_SCHOOL_PROFILE: SchoolProfile = {
   address: "Jl. Raya Pebatan No. 26, Kec. Jatibarang, Kab. Brebes, Jawa Tengah",
   headmaster: "Ustadz H. Ahmad Syakir, S.Pd.I",
   phone: "(0283) 617-XXXX",
-  academicYear: "2026/2027"
+  academicYear: "2026/2027",
+  logoUrl: "/app-icon.jpg",
+  faviconUrl: "/icon-192.png"
 };
 
 export const DEFAULT_SETTINGS: BellSettings = {

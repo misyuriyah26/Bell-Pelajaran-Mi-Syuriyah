@@ -271,9 +271,12 @@ export const DashboardView: React.FC<DashboardViewProps> = ({
           <div className="flex items-center justify-between pb-3 border-b border-slate-800">
             <div className="flex items-center gap-2.5 text-amber-300 text-xs font-bold uppercase tracking-wider">
               <img 
-                src="/app-icon.jpg" 
+                src={profile.logoUrl || "/app-icon.jpg"} 
                 alt="Logo Bel" 
                 className="w-6 h-6 rounded-lg object-cover border border-amber-400/50 shadow-sm" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = "/app-icon.jpg";
+                }}
               />
               <span>Bel Berikutnya Hari Ini</span>
             </div>

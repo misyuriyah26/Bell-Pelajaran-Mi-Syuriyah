@@ -95,6 +95,8 @@ export interface SchoolProfile {
   headmaster: string;
   phone: string;
   academicYear: string;
+  logoUrl?: string; // Custom app icon / logo (Base64 or URL)
+  faviconUrl?: string; // Custom browser tab favicon (Base64 or URL)
 }
 
 export interface BellSettings {
