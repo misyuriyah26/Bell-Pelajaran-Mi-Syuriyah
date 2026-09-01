@@ -236,7 +236,7 @@ export const FirestoreService = {
       await setDoc(doc(db, 'schedules', schedule.id), {
         ...schedule,
         updatedAt: new Date().toISOString()
-      });
+      }, { merge: true });
     } catch (error) {
       handleFirestoreError(error, OperationType.WRITE, path);
     }
@@ -251,10 +251,33 @@ export const FirestoreService = {
     }
   },
 
-  async batchSaveSchedules(schedules: BellEvent[]): Promise<void> {
-    for (const schedule of schedules) {
-      await this.saveSchedule(schedule);
+  async syncAllSchedules(schedules: BellEvent[]): Promise<void> {
+    const path = 'schedules';
+    try {
+      // 1. Reconcile Firestore collection: delete any schedule docs that were removed locally
+      const snap = await getDocs(collection(db, 'schedules'));
+      const activeIds = new Set(schedules.map(s => s.id));
+      
+      const deletePromises: Promise<void>[] = [];
+      snap.forEach(docSnap => {
+        if (!activeIds.has(docSnap.id)) {
+          deletePromises.push(deleteDoc(doc(db, 'schedules', docSnap.id)));
+        }
+      });
+      if (deletePromises.length > 0) {
+        await Promise.all(deletePromises);
+      }
+
+      // 2. Save/update all active schedules
+      const savePromises = schedules.map(s => this.saveSchedule(s));
+      await Promise.all(savePromises);
+    } catch (error) {
+      handleFirestoreError(error, OperationType.WRITE, path);
     }
+  },
+
+  async batchSaveSchedules(schedules: BellEvent[]): Promise<void> {
+    return this.syncAllSchedules(schedules);
   },
 
   // Sync Logs (Collection: bell_logs)

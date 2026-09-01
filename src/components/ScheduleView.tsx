@@ -113,6 +113,9 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   // Modal State
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
+  const [deleteTarget, setDeleteTarget] = useState<BellEvent | null>(null);
+  const [formError, setFormError] = useState<string | null>(null);
+  const [feedbackToast, setFeedbackToast] = useState<{ type: 'success' | 'info'; message: string } | null>(null);
   
   // Form State
   const [formData, setFormData] = useState<Omit<BellEvent, 'id'>>({
@@ -132,6 +135,11 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
     }
   });
 
+  const showToast = (message: string, type: 'success' | 'info' = 'success') => {
+    setFeedbackToast({ message, type });
+    setTimeout(() => setFeedbackToast(null), 3500);
+  };
+
   // Filtered schedules
   const filteredSchedules = schedules.filter(item => {
     const matchDay = selectedDayFilter === 'all' || item.days.includes(selectedDayFilter as DayOfWeek);
@@ -141,35 +149,46 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
   // Toggle single item active status
   const handleToggleEnable = (id: string) => {
+    const targetItem = schedules.find(s => s.id === id);
     const updated = schedules.map(s => s.id === id ? { ...s, enabled: !s.enabled } : s);
     onSaveSchedules(updated);
+    showToast(`Jadwal "${targetItem?.name || ''}" ${targetItem?.enabled ? 'dinonaktifkan' : 'diaktifkan'}.`, 'info');
   };
 
-  // Delete item
-  const handleDelete = (id: string) => {
-    if (window.confirm('Apakah Anda yakin ingin menghapus jadwal bel ini?')) {
-      const updated = schedules.filter(s => s.id !== id);
-      onSaveSchedules(updated);
-    }
+  // Delete item - open confirmation modal
+  const handlePromptDelete = (item: BellEvent) => {
+    setDeleteTarget(item);
+  };
+
+  // Confirm delete
+  const handleConfirmDelete = () => {
+    if (!deleteTarget) return;
+    const deletedName = deleteTarget.name;
+    const updated = schedules.filter(s => s.id !== deleteTarget.id);
+    onSaveSchedules(updated);
+    setDeleteTarget(null);
+    showToast(`Jadwal "${deletedName}" berhasil dihapus.`, 'success');
   };
 
   // Duplicate item
   const handleDuplicate = (item: BellEvent) => {
     const duplicated: BellEvent = {
       ...item,
-      id: 'bell-' + Date.now(),
+      id: 'bell-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7),
       name: `${item.name} (Salinan)`,
       time: item.time
     };
     onSaveSchedules([...schedules, duplicated]);
+    showToast(`Jadwal "${item.name}" berhasil diduplikat.`, 'success');
   };
 
   // Open modal for new item
   const handleAddNew = () => {
     setEditingId(null);
+    setFormError(null);
     setFormData({
       time: '07:00',
-      name: 'Bel Masuk Baru',
+      name: 'Bel Masuk Jam Ke-1 & Doa Pagi',
       category: 'masuk',
       days: [1, 2, 3, 4, 5, 6],
       enabled: true,
@@ -189,11 +208,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   // Open modal for editing
   const handleEdit = (item: BellEvent) => {
     setEditingId(item.id);
+    setFormError(null);
     setFormData({
       time: item.time,
       name: item.name,
       category: item.category,
-      days: [...item.days],
+      days: item.days.length > 0 ? [...item.days] : [1, 2, 3, 4, 5, 6],
       enabled: item.enabled,
       chimeType: item.chimeType,
       repeatChime: item.repeatChime,
@@ -225,20 +245,33 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
   // Save form modal
   const handleSaveModal = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!formData.name.trim() || !formData.time.trim()) {
-      alert('Mohon isi nama acara dan waktu bel.');
+    setFormError(null);
+
+    if (!formData.name.trim()) {
+      setFormError('Mohon masukkan nama jadwal / acara bel.');
+      return;
+    }
+    if (!formData.time.trim()) {
+      setFormError('Mohon tentukan waktu bel (format JJ:MM).');
+      return;
+    }
+    if (formData.days.length === 0) {
+      setFormError('Pilih minimal 1 hari aktif berlakunya bel.');
       return;
     }
 
     if (editingId) {
-      const updated = schedules.map(s => s.id === editingId ? { ...formData, id: editingId } : s);
+      const updatedItem: BellEvent = { ...formData, id: editingId };
+      const updated = schedules.map(s => s.id === editingId ? updatedItem : s);
       onSaveSchedules(updated);
+      showToast(`Jadwal "${formData.name}" berhasil diperbarui.`);
     } else {
       const newEvent: BellEvent = {
         ...formData,
-        id: 'bell-' + Date.now()
+        id: 'bell-' + Date.now() + '-' + Math.random().toString(36).substring(2, 7)
       };
       onSaveSchedules([...schedules, newEvent]);
+      showToast(`Jadwal "${formData.name}" berhasil ditambahkan.`);
     }
     setIsModalOpen(false);
   };
@@ -255,15 +288,15 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
       label = 'Mode Khusus Ramadhan';
     }
 
-    if (window.confirm(`Ganti jadwal aktif ke "${label}"? Jadwal saat ini akan diperbarui.`)) {
-      onSaveSchedules(target);
-    }
+    onSaveSchedules(target);
+    showToast(`Jadwal berhasil diganti ke preset "${label}".`);
   };
 
   // Export / Import
   const handleExportJSON = () => {
     const jsonStr = JSON.stringify(schedules, null, 2);
     downloadJSONBackup(jsonStr, 'jadwal-bel-mi-syuriyah.json');
+    showToast('File backup jadwal berhasil diekspor.');
   };
 
   const handleImportJSON = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -277,12 +310,12 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         const list = Array.isArray(parsed) ? parsed : parsed.schedules;
         if (Array.isArray(list) && list.length > 0) {
           onSaveSchedules(list);
-          alert(`Berhasil mengimpor ${list.length} jadwal bel!`);
+          showToast(`Berhasil mengimpor ${list.length} jadwal bel!`);
         } else {
-          alert('Format file JSON tidak valid.');
+          setFormError('Format file JSON tidak valid.');
         }
       } catch (err) {
-        alert('Gagal membaca file JSON.');
+        setFormError('Gagal membaca file JSON.');
       }
     };
     reader.readAsText(file);
@@ -552,7 +585,7 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
                   {/* Delete */}
                   <button
-                    onClick={() => handleDelete(item.id)}
+                    onClick={() => handlePromptDelete(item)}
                     className="p-2 rounded-xl bg-slate-700/80 hover:bg-rose-900/80 text-slate-300 hover:text-rose-200 transition-all"
                     title="Hapus jadwal"
                   >
@@ -597,6 +630,64 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
         )}
       </div>
 
+      {/* Floating Toast Notification */}
+      {feedbackToast && (
+        <div className="fixed bottom-6 right-6 z-50 animate-bounce-short">
+          <div className={`px-4 py-2.5 rounded-2xl shadow-2xl border flex items-center gap-2.5 text-xs font-bold text-white ${
+            feedbackToast.type === 'success' 
+              ? 'bg-emerald-900/90 border-emerald-500 text-emerald-100 shadow-emerald-950/60' 
+              : 'bg-slate-800/95 border-slate-600 text-slate-100'
+          }`}>
+            <Check className="w-4 h-4 text-emerald-400 shrink-0" />
+            <span>{feedbackToast.message}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Confirmation Modal for Deleting Schedule */}
+      {deleteTarget && (
+        <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4">
+          <div className="bg-slate-900 border border-rose-800/60 rounded-3xl max-w-md w-full p-6 shadow-2xl space-y-4 animate-scale-up">
+            <div className="flex items-center gap-3">
+              <div className="p-3 bg-rose-950/80 text-rose-400 rounded-2xl border border-rose-700/50">
+                <Trash2 className="w-6 h-6" />
+              </div>
+              <div>
+                <h3 className="text-base font-bold text-white">Hapus Jadwal Bel?</h3>
+                <p className="text-xs text-slate-400">Tindakan ini akan menghapus jadwal dari daftar dan cloud</p>
+              </div>
+            </div>
+
+            <div className="bg-slate-800/70 border border-slate-700/60 rounded-2xl p-3.5 text-xs space-y-1">
+              <div className="flex items-center gap-2 text-amber-300 font-bold font-mono text-sm">
+                <Clock className="w-4 h-4 text-amber-400" />
+                <span>Pukul {deleteTarget.time} WIB</span>
+              </div>
+              <p className="text-white font-semibold">{deleteTarget.name}</p>
+              <p className="text-slate-400 text-[11px]">Kategori: {deleteTarget.category.replace('_', ' ')}</p>
+            </div>
+
+            <div className="flex items-center justify-end gap-2.5 pt-2">
+              <button
+                type="button"
+                onClick={() => setDeleteTarget(null)}
+                className="px-4 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 text-xs font-semibold rounded-xl transition-colors"
+              >
+                Batal
+              </button>
+              <button
+                type="button"
+                onClick={handleConfirmDelete}
+                className="px-5 py-2 bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold rounded-xl shadow-lg transition-transform active:scale-95 flex items-center gap-1.5"
+              >
+                <Trash2 className="w-4 h-4" />
+                <span>Ya, Hapus Jadwal</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* Modal Add / Edit Schedule Item */}
       {isModalOpen && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm flex items-center justify-center p-4 overflow-y-auto">
@@ -622,6 +713,14 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
                 <X className="w-5 h-5" />
               </button>
             </div>
+
+            {/* Inline Form Error Notice */}
+            {formError && (
+              <div className="bg-rose-950/80 border border-rose-700/60 text-rose-200 text-xs px-3.5 py-2.5 rounded-2xl flex items-center gap-2">
+                <span className="w-2 h-2 rounded-full bg-rose-500 animate-pulse"></span>
+                <span>{formError}</span>
+              </div>
+            )}
 
             {/* Quick Template Selector */}
             <div className="bg-slate-800/60 border border-slate-700/60 rounded-2xl p-3.5 space-y-2">
@@ -704,9 +803,34 @@ export const ScheduleView: React.FC<ScheduleViewProps> = ({
 
               {/* Active Days Checkboxes */}
               <div>
-                <label className="block text-xs font-semibold text-slate-300 mb-2">
-                  Hari Aktif (Pilih Hari Berlakunya Bel):
-                </label>
+                <div className="flex items-center justify-between mb-2">
+                  <label className="block text-xs font-semibold text-slate-300">
+                    Hari Aktif (Pilih Hari Berlakunya Bel):
+                  </label>
+                  <div className="flex items-center gap-1.5 text-[11px]">
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, days: [1, 2, 3, 4, 5, 6] })}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 text-slate-400 hover:text-emerald-300 border border-slate-700 transition-colors font-medium"
+                    >
+                      Sen-Sab
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, days: [1, 2, 3, 4] })}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 text-slate-400 hover:text-emerald-300 border border-slate-700 transition-colors font-medium"
+                    >
+                      Sen-Kam
+                    </button>
+                    <button
+                      type="button"
+                      onClick={() => setFormData({ ...formData, days: [5] })}
+                      className="px-2 py-0.5 rounded-lg bg-slate-800 hover:bg-emerald-950 text-slate-400 hover:text-emerald-300 border border-slate-700 transition-colors font-medium"
+                    >
+                      Jumat Saja
+                    </button>
+                  </div>
+                </div>
                 <div className="grid grid-cols-3 sm:grid-cols-6 gap-2">
                   {[1, 2, 3, 4, 5, 6].map((dayIdx) => {
                     const checked = formData.days.includes(dayIdx as DayOfWeek);
