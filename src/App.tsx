@@ -39,6 +39,7 @@ import { PwaInstallPrompt } from './components/PwaInstallPrompt';
 import { formatIndonesianDate, formatTime24 } from './utils/dateUtils';
 import { AuthUser } from './types';
 import { getStoredUser, saveStoredUser, isScreenLocked, setScreenLock } from './utils/auth';
+import { updateAppIconsAndManifest } from './utils/pwaManifest';
 import { 
   FirestoreService, 
   testFirestoreConnection, 
@@ -276,9 +277,15 @@ export default function App() {
   const handleSaveProfile = (newProfile: SchoolProfile) => {
     setProfile(newProfile);
     saveSchoolProfile(newProfile);
+    updateAppIconsAndManifest(newProfile).catch(() => {});
     // Background cloud sync
     FirestoreService.saveSchoolProfile(newProfile).catch(() => {});
   };
+
+  // Synchronize PWA Manifest, Desktop/Mobile App Icons & Favicon on profile changes
+  useEffect(() => {
+    updateAppIconsAndManifest(profile).catch(() => {});
+  }, [profile.logoUrl, profile.faviconUrl, profile.name, profile.shortName]);
 
   const handleSaveLogs = (newLogs: BellLog[]) => {
     setLogs(newLogs);
@@ -663,7 +670,7 @@ export default function App() {
       />
 
       {/* PWA Install Banner */}
-      <PwaInstallPrompt />
+      <PwaInstallPrompt profile={profile} />
 
       {/* Main Content Area */}
       <main id="main-content-container" className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 pt-6">

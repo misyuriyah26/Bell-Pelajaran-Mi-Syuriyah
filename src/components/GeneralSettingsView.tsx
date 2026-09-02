@@ -43,6 +43,7 @@ import { getStoredHijriAdjustment, syncHijriWithNuOnline } from '../utils/dateUt
 import { saveStoredHijriAdjustment } from '../utils/hijriNuService';
 import { FirestoreService } from '../lib/firebase';
 import { getAllAudioFiles, saveMultipleAudioFiles } from '../utils/audioLibraryStorage';
+import { updateAppIconsAndManifest, generatePwaIcons } from '../utils/pwaManifest';
 
 interface GeneralSettingsViewProps {
   profile: SchoolProfile;
@@ -164,6 +165,9 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
     });
   };
 
+  const [isPwaSyncing, setIsPwaSyncing] = useState(false);
+  const [pwaSyncNotice, setPwaSyncNotice] = useState<string | null>(null);
+
   const handleLogoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -172,8 +176,13 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
       const updated: SchoolProfile = { ...profileForm, logoUrl: dataUrl };
       setProfileForm(updated);
       onSaveProfile(updated);
+      await updateAppIconsAndManifest(updated);
       setIsSavedNotice(true);
-      setTimeout(() => setIsSavedNotice(false), 3000);
+      setPwaSyncNotice('Logo baru berhasil dipasang dan disinkronkan ke Ikon Aplikasi PWA!');
+      setTimeout(() => {
+        setIsSavedNotice(false);
+        setPwaSyncNotice(null);
+      }, 4000);
     } catch (err) {
       console.error('Logo upload error:', err);
     }
@@ -188,37 +197,119 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
       const updated: SchoolProfile = { ...profileForm, faviconUrl: dataUrl };
       setProfileForm(updated);
       onSaveProfile(updated);
+      await updateAppIconsAndManifest(updated);
       setIsSavedNotice(true);
-      setTimeout(() => setIsSavedNotice(false), 3000);
+      setPwaSyncNotice('Favicon tab dan ikon PWA berhasil diperbarui!');
+      setTimeout(() => {
+        setIsSavedNotice(false);
+        setPwaSyncNotice(null);
+      }, 4000);
     } catch (err) {
       console.error('Favicon upload error:', err);
     }
     e.target.value = '';
   };
 
-  const handleUseLogoAsFavicon = () => {
+  const handleUseLogoAsFavicon = async () => {
     const targetLogo = profileForm.logoUrl || '/app-icon.jpg';
     const updated: SchoolProfile = { ...profileForm, faviconUrl: targetLogo };
     setProfileForm(updated);
     onSaveProfile(updated);
+    await updateAppIconsAndManifest(updated);
     setIsSavedNotice(true);
-    setTimeout(() => setIsSavedNotice(false), 3000);
+    setPwaSyncNotice('Logo madrasah berhasil ditetapkan sebagai Favicon & Ikon PWA!');
+    setTimeout(() => {
+      setIsSavedNotice(false);
+      setPwaSyncNotice(null);
+    }, 4000);
   };
 
-  const handleResetLogo = () => {
+  const handleResetLogo = async () => {
     const updated: SchoolProfile = { ...profileForm, logoUrl: '/app-icon.jpg' };
     setProfileForm(updated);
     onSaveProfile(updated);
+    await updateAppIconsAndManifest(updated);
     setIsSavedNotice(true);
-    setTimeout(() => setIsSavedNotice(false), 3000);
+    setPwaSyncNotice('Logo madrasah dikembalikan ke logo standar.');
+    setTimeout(() => {
+      setIsSavedNotice(false);
+      setPwaSyncNotice(null);
+    }, 3000);
   };
 
-  const handleResetFavicon = () => {
+  const handleResetFavicon = async () => {
     const updated: SchoolProfile = { ...profileForm, faviconUrl: '/icon-192.png' };
     setProfileForm(updated);
     onSaveProfile(updated);
+    await updateAppIconsAndManifest(updated);
     setIsSavedNotice(true);
-    setTimeout(() => setIsSavedNotice(false), 3000);
+    setPwaSyncNotice('Favicon dikembalikan ke standar.');
+    setTimeout(() => {
+      setIsSavedNotice(false);
+      setPwaSyncNotice(null);
+    }, 3000);
+  };
+
+  const handleForceSyncPwa = async () => {
+    setIsPwaSyncing(true);
+    try {
+      await updateAppIconsAndManifest(profileForm);
+      setPwaSyncNotice('Ikon aplikasi terpasang (PWA) & Web Manifest berhasil diperbarui!');
+      setTimeout(() => setPwaSyncNotice(null), 4000);
+    } catch (err: any) {
+      setPwaSyncNotice('Gagal memperbarui ikon PWA: ' + err.message);
+    } finally {
+      setIsPwaSyncing(false);
+    }
+  };
+
+  const handleDownloadCustomManifest = async () => {
+    try {
+      const targetIcon = profileForm.faviconUrl || profileForm.logoUrl || '/app-icon.jpg';
+      const icons = await generatePwaIcons(targetIcon);
+      const manifestObj = {
+        name: profileForm.name || 'Bel Pelajaran MI Syuriyah Pebatan',
+        short_name: profileForm.shortName || 'Bel Syuriyah',
+        description: profileForm.tagline || 'Sistem Bel Otomatis 3 Bahasa dan Jadwal Pelajaran MI Syuriyah Pebatan',
+        start_url: '/',
+        id: '/',
+        scope: '/',
+        display: 'standalone',
+        orientation: 'any',
+        background_color: '#020617',
+        theme_color: '#059669',
+        categories: ['education', 'productivity', 'utilities'],
+        icons: [
+          {
+            src: icons.icon192,
+            sizes: '192x192',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: icons.icon512,
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'any'
+          },
+          {
+            src: icons.iconMaskable,
+            sizes: '512x512',
+            type: 'image/png',
+            purpose: 'maskable'
+          }
+        ]
+      };
+      const blob = new Blob([JSON.stringify(manifestObj, null, 2)], { type: 'application/json' });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = 'manifest.json';
+      a.click();
+      URL.revokeObjectURL(a.href);
+    } catch (err) {
+      console.error('Download manifest error:', err);
+    }
   };
 
   const handlePushToCloud = async () => {
@@ -320,8 +411,13 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
   const handleProfileSubmit = (e: React.FormEvent) => {
     e.preventDefault();
     onSaveProfile(profileForm);
+    updateAppIconsAndManifest(profileForm).catch(() => {});
     setIsSavedNotice(true);
-    setTimeout(() => setIsSavedNotice(false), 3000);
+    setPwaSyncNotice('Profil madrasah, judul web, dan ikon PWA berhasil diperbarui!');
+    setTimeout(() => {
+      setIsSavedNotice(false);
+      setPwaSyncNotice(null);
+    }, 3000);
   };
 
   const handleExportFullBackup = () => {
@@ -725,6 +821,144 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
             Setiap perubahan logo atau favicon yang Anda simpan akan disiarkan (*broadcast*) secara instan ke seluruh tab browser dan layar monitor guru yang sedang membuka aplikasi ini.
           </div>
         </div>
+
+        {/* PWA Installed App Icon Synchronization & Multi-Platform Preview Card */}
+        <div id="pwa-icon-sync-panel" className="bg-slate-950/90 border border-emerald-500/40 rounded-2xl p-4 sm:p-5 space-y-4 shadow-xl">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3 pb-3 border-b border-slate-800">
+            <div className="flex items-center gap-2.5">
+              <div className="p-2 bg-emerald-950 text-emerald-400 rounded-xl border border-emerald-600/40">
+                <Sparkles className="w-4 h-4" />
+              </div>
+              <div>
+                <h4 className="text-sm font-bold text-white flex items-center gap-2">
+                  <span>Pratinjau Ikon Aplikasi Terpasang (PWA / Desktop / Android / iOS)</span>
+                  <span className="px-2 py-0.5 rounded-full text-[10px] font-bold bg-emerald-500/20 text-emerald-300 border border-emerald-500/30">
+                    Otomatis Sinkron
+                  </span>
+                </h4>
+                <p className="text-xs text-slate-400">
+                  Ikon di bawah ini adalah tampilan resmi yang akan muncul di layar desktop komputer, menu Android, dan home screen iOS saat aplikasi di-instal.
+                </p>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-2 w-full sm:w-auto justify-end">
+              <button
+                type="button"
+                onClick={handleForceSyncPwa}
+                disabled={isPwaSyncing}
+                className="px-3.5 py-2 bg-gradient-to-r from-emerald-600 to-emerald-700 hover:from-emerald-500 hover:to-emerald-600 text-white text-xs font-bold rounded-xl shadow-md transition-all active:scale-95 flex items-center gap-1.5 shrink-0"
+              >
+                <RefreshCw className={`w-3.5 h-3.5 ${isPwaSyncing ? 'animate-spin' : ''}`} />
+                <span>{isPwaSyncing ? 'Menyinkronkan...' : 'Segarkan Ikon PWA'}</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={handleDownloadCustomManifest}
+                className="px-3 py-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-700 transition-colors flex items-center gap-1.5 shrink-0"
+                title="Unduh file manifest.json kustom"
+              >
+                <Download className="w-3.5 h-3.5" />
+                <span>Unduh Manifest</span>
+              </button>
+            </div>
+          </div>
+
+          {pwaSyncNotice && (
+            <div className="p-3 rounded-xl bg-emerald-950/80 border border-emerald-500/60 text-xs text-emerald-200 flex items-center gap-2 animate-fade-in">
+              <CheckCircle2 className="w-4 h-4 text-emerald-400 shrink-0" />
+              <span>{pwaSyncNotice}</span>
+            </div>
+          )}
+
+          {/* 4 Multi-Platform Icon Simulations */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-3.5 pt-1">
+            
+            {/* 1. Desktop PC / Laptop Icon */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center text-center space-y-2.5">
+              <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                <Monitor className="w-3 h-3 text-emerald-400" /> Windows / Mac Desktop
+              </span>
+              <div className="w-14 h-14 rounded-2xl bg-slate-950 border border-amber-400/60 shadow-xl p-1.5 flex items-center justify-center relative group">
+                <img 
+                  src={profileForm.faviconUrl || profileForm.logoUrl || '/app-icon.jpg'} 
+                  alt="Desktop Icon" 
+                  className="w-full h-full object-contain rounded-xl"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                  }}
+                />
+              </div>
+              <div className="text-[11px] font-bold text-white truncate max-w-[120px]">
+                {profileForm.shortName || 'Bel Syuriyah'}
+              </div>
+            </div>
+
+            {/* 2. Android Adaptive Icon (Circle Mask) */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center text-center space-y-2.5">
+              <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                <Smartphone className="w-3 h-3 text-amber-400" /> Android Adaptive
+              </span>
+              <div className="w-14 h-14 rounded-full bg-slate-950 border-2 border-emerald-500/60 shadow-xl p-2.5 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={profileForm.faviconUrl || profileForm.logoUrl || '/app-icon.jpg'} 
+                  alt="Android Icon" 
+                  className="w-full h-full object-contain"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                  }}
+                />
+              </div>
+              <div className="text-[11px] font-bold text-white truncate max-w-[120px]">
+                {profileForm.shortName || 'Bel Syuriyah'}
+              </div>
+            </div>
+
+            {/* 3. iOS Safari Web Clip (Squircle) */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center text-center space-y-2.5">
+              <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                <Smartphone className="w-3 h-3 text-sky-400" /> iPhone / iPad (iOS)
+              </span>
+              <div className="w-14 h-14 rounded-[16px] bg-slate-950 border border-sky-400/60 shadow-xl p-1.5 flex items-center justify-center overflow-hidden">
+                <img 
+                  src={profileForm.faviconUrl || profileForm.logoUrl || '/app-icon.jpg'} 
+                  alt="iOS Icon" 
+                  className="w-full h-full object-contain rounded-[12px]"
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                  }}
+                />
+              </div>
+              <div className="text-[11px] font-bold text-white truncate max-w-[120px]">
+                {profileForm.shortName || 'Bel Syuriyah'}
+              </div>
+            </div>
+
+            {/* 4. Browser Tab Favicon */}
+            <div className="bg-slate-900/80 border border-slate-800 rounded-xl p-3 flex flex-col items-center text-center space-y-2.5">
+              <span className="text-[10px] font-semibold text-slate-400 flex items-center gap-1">
+                <Chrome className="w-3 h-3 text-rose-400" /> Favicon Peramban
+              </span>
+              <div className="w-14 h-14 rounded-xl bg-slate-950 border border-slate-800 shadow-xl flex items-center justify-center">
+                <div className="w-8 h-8 rounded-md bg-slate-900 border border-slate-700 p-1 flex items-center justify-center">
+                  <img 
+                    src={profileForm.faviconUrl || profileForm.logoUrl || '/icon-192.png'} 
+                    alt="Favicon" 
+                    className="w-full h-full object-contain"
+                    onError={(e) => {
+                      (e.currentTarget as HTMLImageElement).src = '/icon-192.png';
+                    }}
+                  />
+                </div>
+              </div>
+              <div className="text-[11px] font-bold text-white truncate max-w-[120px]">
+                Tab Browser (16px)
+              </div>
+            </div>
+
+          </div>
+        </div>
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
@@ -738,7 +972,7 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
 
           <form onSubmit={handleProfileSubmit} className="space-y-4">
             
-            {/* School Name & Level */}
+            {/* School Name & Level & Short Name */}
             <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
               <div className="sm:col-span-2">
                 <label className="block text-xs font-semibold text-slate-300 mb-1">
@@ -764,6 +998,23 @@ export const GeneralSettingsView: React.FC<GeneralSettingsViewProps> = ({
                   className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-semibold"
                 />
               </div>
+            </div>
+
+            {/* Short Name for PWA */}
+            <div>
+              <label className="block text-xs font-semibold text-slate-300 mb-1">
+                Nama Singkat Aplikasi / Pintasan Ikon Desktop &amp; HP (PWA):
+              </label>
+              <input
+                type="text"
+                value={profileForm.shortName || ''}
+                placeholder="Contoh: Bel Syuriyah"
+                onChange={(e) => setProfileForm({ ...profileForm, shortName: e.target.value })}
+                className="w-full bg-slate-950 border border-slate-800 rounded-xl px-3 py-2 text-xs text-white focus:outline-none focus:border-emerald-500 font-semibold"
+              />
+              <p className="text-[11px] text-slate-400 mt-1">
+                Nama pendek ini akan tampil di bawah ikon aplikasi saat di-instal di layar utama HP atau desktop.
+              </p>
             </div>
 
             {/* Tagline */}

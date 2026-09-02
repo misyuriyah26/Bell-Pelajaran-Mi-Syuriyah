@@ -2,6 +2,7 @@ import { BellEvent, SchoolProfile, BellSettings } from '../types';
 
 export const DEFAULT_SCHOOL_PROFILE: SchoolProfile = {
   name: "MI Syuriyah Pebatan",
+  shortName: "Bel Syuriyah",
   tagline: "Madrasah Ibtidaiyah Unggul, Berakhlak Mulia, & Berprestasi",
   level: "Madrasah Ibtidaiyah (MI)",
   npsn: "60709823",

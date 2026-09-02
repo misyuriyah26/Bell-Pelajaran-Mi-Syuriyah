@@ -1,5 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { Download, Chrome, Smartphone, Monitor, X, CheckCircle2, Share2, PlusSquare } from 'lucide-react';
+import { SchoolProfile } from '../types';
 
 interface BeforeInstallPromptEvent extends Event {
   prompt: () => Promise<void>;
@@ -7,15 +8,20 @@ interface BeforeInstallPromptEvent extends Event {
 }
 
 interface PwaInstallPromptProps {
+  profile?: SchoolProfile;
   onInstalled?: () => void;
 }
 
-export const PwaInstallPrompt: React.FC<PwaInstallPromptProps> = ({ onInstalled }) => {
+export const PwaInstallPrompt: React.FC<PwaInstallPromptProps> = ({ profile, onInstalled }) => {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [isInstallable, setIsInstallable] = useState(false);
   const [isInstalled, setIsInstalled] = useState(false);
   const [showGuideModal, setShowGuideModal] = useState(false);
   const [showBanner, setShowBanner] = useState(false);
+
+  const activeAppIcon = profile?.logoUrl || profile?.faviconUrl || '/app-icon.jpg';
+  const schoolName = profile?.name || 'MI Syuriyah Pebatan';
+  const shortName = profile?.shortName || 'Bel Syuriyah';
 
   useEffect(() => {
     // Check if already installed in standalone mode
@@ -85,17 +91,20 @@ export const PwaInstallPrompt: React.FC<PwaInstallPromptProps> = ({ onInstalled 
           <div className="max-w-7xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3">
             <div className="flex items-center gap-3 w-full sm:w-auto">
               <img 
-                src="/app-icon.jpg" 
-                alt="Logo Bel Syuriyah" 
+                src={activeAppIcon} 
+                alt={schoolName} 
                 className="w-9 h-9 rounded-xl border border-amber-400/50 shadow-md object-cover shrink-0" 
+                onError={(e) => {
+                  (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                }}
               />
               <div>
                 <div className="flex items-center gap-2">
-                  <span className="text-xs sm:text-sm font-bold text-white">Pasang Aplikasi ke Chrome / Laptop</span>
+                  <span className="text-xs sm:text-sm font-bold text-white">Pasang Aplikasi {shortName} ke Chrome / Komputer</span>
                   <span className="px-1.5 py-0.2 rounded text-[9px] font-bold bg-amber-400 text-slate-950 uppercase">PWA</span>
                 </div>
                 <p className="text-[11px] text-slate-300">
-                  Jalankan aplikasi bel mandiri di desktop tanpa perlu membuka tab browser setiap hari.
+                  Jalankan aplikasi bel mandiri {schoolName} di desktop tanpa perlu membuka tab browser setiap hari.
                 </p>
               </div>
             </div>
@@ -130,10 +139,17 @@ export const PwaInstallPrompt: React.FC<PwaInstallPromptProps> = ({ onInstalled 
           <div className="bg-slate-900 border border-emerald-500/50 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-5 text-left">
             <div className="flex items-center justify-between pb-3 border-b border-slate-800">
               <div className="flex items-center gap-3">
-                <img src="/app-icon.jpg" alt="Icon" className="w-10 h-10 rounded-xl border border-amber-400/60 shadow" />
+                <img 
+                  src={activeAppIcon} 
+                  alt={schoolName} 
+                  className="w-10 h-10 rounded-xl border border-amber-400/60 shadow object-cover" 
+                  onError={(e) => {
+                    (e.currentTarget as HTMLImageElement).src = '/app-icon.jpg';
+                  }}
+                />
                 <div>
-                  <h3 className="text-base font-bold text-white">Unduh di Google Chrome</h3>
-                  <p className="text-xs text-slate-400">Panduan Pemasangan Aplikasi</p>
+                  <h3 className="text-base font-bold text-white">Pasang {shortName} di Perangkat</h3>
+                  <p className="text-xs text-slate-400">Panduan Pemasangan Aplikasi PWA</p>
                 </div>
               </div>
               <button

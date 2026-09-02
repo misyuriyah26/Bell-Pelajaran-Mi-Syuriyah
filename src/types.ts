@@ -88,6 +88,7 @@ export interface BellEvent {
 
 export interface SchoolProfile {
   name: string;
+  shortName?: string; // Short title for PWA app launcher / home screen icon
   tagline: string;
   level: string;
   npsn: string;
